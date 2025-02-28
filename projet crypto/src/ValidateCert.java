@@ -1,5 +1,6 @@
 import java.io.*;
 import java.nio.file.*;
+import java.security.*;
 import java.security.cert.*;
 import java.util.Base64;
 
@@ -20,6 +21,17 @@ public class ValidateCert {
         byte[] decoded = Base64.getDecoder().decode(base64Cert);
         try (InputStream inStream = new ByteArrayInputStream(decoded)) {
             return (X509Certificate) certFactory.generateCertificate(inStream);
+        }
+    }
+
+    public static boolean verifierSignature(X509Certificate cert) {
+        try {
+            PublicKey publicKey = cert.getPublicKey();
+            cert.verify(publicKey);
+            return true;
+        } catch (Exception e) {
+            System.err.println("Échec de la vérification de la signature: " + e.getMessage());
+            return false;
         }
     }
 }
