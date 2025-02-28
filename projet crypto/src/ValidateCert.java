@@ -61,4 +61,20 @@ public class ValidateCert {
         }
     }
 
+    public static void verifierAlgorithmeEtSignature(X509Certificate cert) {
+        try {
+            String algo = cert.getSigAlgName();
+            byte[] signature = cert.getSignature();
+            PublicKey publicKey = cert.getPublicKey();
+            Signature sig = Signature.getInstance(algo);
+            sig.initVerify(publicKey);
+            sig.update(cert.getTBSCertificate());
+            boolean verified = sig.verify(signature);
+            System.out.println("Algorithme de signature: " + algo);
+            System.out.println("Signature vérifiée: " + (verified ? "✔ Valide" : "❌ Invalide"));
+        } catch (Exception e) {
+            System.err.println("Échec de la vérification de l'algorithme et de la signature: " + e.getMessage());
+        }
+    }
+
 }

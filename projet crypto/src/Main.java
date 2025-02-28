@@ -2,8 +2,8 @@ import java.security.cert.X509Certificate;
 
 public class Main {
     public static void main(String[] args) {
-        String derFilePath = "C:\\Users\\louis\\OneDrive\\Documents\\GitHub\\Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis\\projet crypto\\Lemonde\\DER\\GlobalSign_root_lemonde_der.der";
-        String pemFilePath  = "C:\\Users\\louis\\OneDrive\\Documents\\GitHub\\Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis\\projet crypto\\Lemonde\\PEM\\GlobalSign_root_lemonde_pem.crt";
+        String derFilePath = "C:\\Users\\Alexandre\\OneDrive\\Bureau\\Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis\\projet crypto\\Lemonde\\DER\\GlobalSign_root_lemonde_der.der";
+        String pemFilePath  = "C:\\Users\\Alexandre\\OneDrive\\Bureau\\Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis\\projet crypto\\Lemonde\\PEM\\GlobalSign_root_lemonde_pem.crt";
 
         try {
             System.out.println("Test du certificat DER :");
@@ -12,6 +12,7 @@ public class Main {
             verifierEtAfficherSignature(derCert);
             verifierEtAfficherKeyUsage(derCert);
             verifierDate(derCert);
+            verifierAlgorithmeEtSignature(derCert);
 
             System.out.println("\nTest du certificat PEM :");
             X509Certificate pemCert = ValidateCert.affichage_PEM(pemFilePath);
@@ -19,6 +20,7 @@ public class Main {
             verifierEtAfficherSignature(pemCert);
             verifierEtAfficherKeyUsage(pemCert);
             verifierDate(pemCert);
+            verifierAlgorithmeEtSignature(pemCert);
 
         } catch (Exception e) {
             System.err.println("Erreur : " + e.getMessage());
@@ -63,5 +65,8 @@ public class Main {
         }
     }
 
+    private static void verifierAlgorithmeEtSignature(X509Certificate cert) {
+        System.out.println("\nVérification de l'algorithme de signature et de la signature :");
+        ValidateCert.verifierAlgorithmeEtSignature(cert);
+    }
 }
-
