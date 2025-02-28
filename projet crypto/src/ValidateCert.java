@@ -1,7 +1,8 @@
 import java.io.*;
 import java.nio.file.*;
 import java.security.*;
-import java.security.cert.*;
+import java.security.cert.X509Certificate;
+import java.security.cert.CertificateFactory;
 import java.util.Base64;
 
 public class ValidateCert {
@@ -32,6 +33,21 @@ public class ValidateCert {
         } catch (Exception e) {
             System.err.println("Échec de la vérification de la signature: " + e.getMessage());
             return false;
+        }
+    }
+
+    public static void verifierKeyUsage(X509Certificate cert) {
+        boolean[] keyUsage = cert.getKeyUsage();
+        if (keyUsage != null) {
+            System.out.println("Key Usage:");
+            String[] usages = {"Digital Signature", "Non Repudiation", "Key Encipherment", "Data Encipherment", "Key Agreement", "Certificate Signing", "CRL Signing", "Encipher Only", "Decipher Only"};
+            for (int i = 0; i < keyUsage.length; i++) {
+                if (keyUsage[i]) {
+                    System.out.println("✔ " + usages[i]);
+                }
+            }
+        } else {
+            System.out.println("Key Usage non spécifié dans le certificat.");
         }
     }
 }
