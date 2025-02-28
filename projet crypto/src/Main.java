@@ -3,7 +3,7 @@ import java.security.cert.X509Certificate;
 public class Main {
     public static void main(String[] args) {
         String derFilePath = "C:\\Users\\louis\\OneDrive\\Documents\\GitHub\\Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis\\projet crypto\\Lemonde\\DER\\GlobalSign_root_lemonde_der.der";
-        String pemFilePath  = "C:\\Users\\louis\\OneDrive\\Documents\\GitHub\\Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis\\projet crypto\\Lemonde\\PEM\\badGlobalSign_root_lemonde_pem.crt";
+        String pemFilePath  = "C:\\Users\\louis\\OneDrive\\Documents\\GitHub\\Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis\\projet crypto\\Lemonde\\PEM\\GlobalSign_root_lemonde_pem.crt";
 
         try {
             System.out.println("Test du certificat DER :");
@@ -25,8 +25,8 @@ public class Main {
     private static void afficherDetails(X509Certificate cert) {
         if (cert != null) {
             System.out.println("--------------------------------");
-            System.out.println("Sujet : " + cert.getSubjectDN());
-            System.out.println("Émetteur : " + cert.getIssuerDN());
+            System.out.println("Sujet : " + cert.getSubjectX500Principal());
+            System.out.println("Émetteur : " + cert.getIssuerX500Principal());
             System.out.println("Valide du : " + cert.getNotBefore());
             System.out.println("Valide jusqu'à : " + cert.getNotAfter());
             System.out.println("Numéro de série : " + cert.getSerialNumber());
