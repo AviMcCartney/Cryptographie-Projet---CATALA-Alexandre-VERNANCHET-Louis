@@ -50,4 +50,15 @@ public class ValidateCert {
             System.out.println("Key Usage non spécifié dans le certificat.");
         }
     }
+
+    public static boolean verifierDate(X509Certificate cert){
+        try{
+            cert.checkValidity();
+            return true;
+        } catch (Exception e){
+            System.err.println("Échec de la verification de la date" + e.getMessage());
+            return false;
+        }
+    }
+
 }

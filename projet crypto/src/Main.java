@@ -2,8 +2,8 @@ import java.security.cert.X509Certificate;
 
 public class Main {
     public static void main(String[] args) {
-        String derFilePath = "C:\\Users\\Alexandre\\OneDrive\\Bureau\\Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis\\projet crypto\\Lemonde\\DER\\GlobalSign_root_lemonde_der.der";
-        String pemFilePath  = "C:\\Users\\Alexandre\\OneDrive\\Bureau\\Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis\\projet crypto\\Lemonde\\PEM\\GlobalSign_root_lemonde_pem.crt";
+        String derFilePath = "C:\\Users\\louis\\OneDrive\\Documents\\GitHub\\Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis\\projet crypto\\Lemonde\\DER\\GlobalSign_root_lemonde_der.der";
+        String pemFilePath  = "C:\\Users\\louis\\OneDrive\\Documents\\GitHub\\Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis\\projet crypto\\Lemonde\\PEM\\GlobalSign_root_lemonde_pem.crt";
 
         try {
             System.out.println("Test du certificat DER :");
@@ -11,12 +11,14 @@ public class Main {
             afficherDetails(derCert);
             verifierEtAfficherSignature(derCert);
             verifierEtAfficherKeyUsage(derCert);
+            verifierDate(derCert);
 
             System.out.println("\nTest du certificat PEM :");
             X509Certificate pemCert = ValidateCert.affichage_PEM(pemFilePath);
             afficherDetails(pemCert);
             verifierEtAfficherSignature(pemCert);
             verifierEtAfficherKeyUsage(pemCert);
+            verifierDate(pemCert);
 
         } catch (Exception e) {
             System.err.println("Erreur : " + e.getMessage());
@@ -52,5 +54,14 @@ public class Main {
         System.out.println("\nVérification de l'extension KeyUsage :");
         ValidateCert.verifierKeyUsage(cert);
     }
+
+    private static void verifierDate(X509Certificate cert){
+        if(ValidateCert.verifierDate(cert)){
+            System.out.println("\n✅ Date valide.");
+        } else {
+            System.out.println("\n❌ Date invalide.");
+        }
+    }
+
 }
 
