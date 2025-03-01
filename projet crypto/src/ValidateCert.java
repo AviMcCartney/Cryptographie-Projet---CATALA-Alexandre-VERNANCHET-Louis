@@ -72,7 +72,7 @@ public class ValidateCert {
             sig.update(cert.getTBSCertificate());
             boolean verified = sig.verify(signature);
             System.out.println("Algorithme de signature: " + algo);
-            System.out.println("Signature vérifiée: " + (verified ? "✔ Valide" : "❌ Invalide"));
+            System.out.println("Signature vérifiée: " + (verified ? "Valide" : "Invalide"));
         } catch (Exception e) {
             System.err.println("Échec de la vérification de l'algorithme et de la signature: " + e.getMessage());
         }
@@ -113,16 +113,16 @@ public class ValidateCert {
 
             System.out.println("=== Vérification de la signature ===");
             if (verifierSignature(cert)) {
-                System.out.println("✔ La signature du certificat est valide.");
+                System.out.println("La signature du certificat est valide.");
             } else {
-                System.out.println("❌ La signature du certificat est invalide.");
+                System.out.println("La signature du certificat est invalide.");
             }
 
             System.out.println("=== Vérification de la validité ===");
             if (verifierDate(cert)) {
-                System.out.println("✔ Le certificat est valide en termes de date.");
+                System.out.println("Le certificat est valide en termes de date.");
             } else {
-                System.out.println("❌ Le certificat est expiré ou non valide.");
+                System.out.println("Le certificat est expiré ou non valide.");
             }
 
             System.out.println("=== Vérification de l'usage des clés ===");
