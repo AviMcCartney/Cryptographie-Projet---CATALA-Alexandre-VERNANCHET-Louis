@@ -1,11 +1,14 @@
+//Import des class
 import java.security.cert.X509Certificate;
 
 public class Main {
     public static void main(String[] args) {
-        String derFilePath = "C:\\Users\\Alexandre\\OneDrive\\Bureau\\Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis\\projet crypto\\Lemonde\\DER\\GlobalSign_root_lemonde_der.der";
-        String pemFilePath  = "C:\\Users\\Alexandre\\OneDrive\\Bureau\\Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis\\projet crypto\\Lemonde\\PEM\\GlobalSign_root_lemonde_pem.crt";
+        //Chemins absolus des certificats
+        String derFilePath = "C:\\Users\\louis\\OneDrive\\Documents\\GitHub\\Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis\\projet crypto\\tbscertificate\\DER\\tbs_root_der.der";
+        String pemFilePath  = "C:\\Users\\louis\\OneDrive\\Documents\\GitHub\\Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis\\projet crypto\\tbscertificate\\PEM\\tbs_root_pem.crt";
 
         try {
+            //Appelle des fonctions avec le fichier DER
             System.out.println("Test du certificat DER :");
             X509Certificate derCert = ValidateCert.affichage_DER(derFilePath);
             afficherDetails(derCert);
@@ -14,6 +17,7 @@ public class Main {
             verifierDate(derCert);
             verifierAlgorithmeEtSignature(derCert);
 
+            //Appelle des fonctions avec le fichier PEM
             System.out.println("\nTest du certificat PEM :");
             X509Certificate pemCert = ValidateCert.affichage_PEM(pemFilePath);
             afficherDetails(pemCert);
@@ -23,6 +27,7 @@ public class Main {
             verifierAlgorithmeEtSignature(pemCert);
 
         } catch (Exception e) {
+            //Gestion d'erreur
             System.err.println("Erreur : " + e.getMessage());
             e.printStackTrace();
         }
