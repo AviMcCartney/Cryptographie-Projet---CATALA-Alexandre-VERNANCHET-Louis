@@ -30,6 +30,14 @@ public class Main {
 
                 afficherInfos(cert);
 
+                System.out.println("\n=== Vérification de la signature RSA avec BigInteger ===");
+                if (ValidateCert.verifierSignatureRSA_BigInteger(cert)) {
+                    System.out.println("✔ La signature RSA est valide (calcul manuel avec BigInteger).");
+                } else {
+                    System.out.println("❌ La signature RSA est invalide.");
+                }
+
+
             } else if (commande.equals("validate-cert-chain")) {
                 if (args.length < 5) {
                     afficherAide();

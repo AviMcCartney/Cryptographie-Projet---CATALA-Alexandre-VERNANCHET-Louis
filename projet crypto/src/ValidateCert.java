@@ -7,8 +7,12 @@ import java.security.PublicKey;
 import java.security.Signature;
 import java.security.cert.X509Certificate;
 import java.security.cert.CertificateFactory;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.interfaces.RSAPublicKey;
 
 
 public class ValidateCert {
@@ -128,6 +132,10 @@ public class ValidateCert {
         }
     }
 
+    /**
+     * 
+     * @param cert
+     */
     public static void afficherInfosCertificat(X509Certificate cert) {
         System.out.println("=== Informations du Certificat ===");
         System.out.println("Sujet : " + cert.getSubjectX500Principal());
@@ -137,6 +145,11 @@ public class ValidateCert {
         System.out.println("Numéro de série : " + cert.getSerialNumber());
     }
 
+    /**
+     *
+     * @param chain
+     * @return
+     */
     public static boolean verifierChaineCertificats(List<X509Certificate> chain) {
         if (chain == null || chain.isEmpty()) {
             System.err.println("❌ Erreur : La chaîne de certificats est vide ou nulle.");
@@ -146,6 +159,12 @@ public class ValidateCert {
         return verifierRecursive(chain, chain.size() - 1); // On commence par le Leaf Cert
     }
 
+    /**
+     *
+     * @param chain
+     * @param index
+     * @return
+     */
     private static boolean verifierRecursive(List<X509Certificate> chain, int index) {
         // Condition de sortie : On atteint le Root CA (index 0)
         if (index == 0) {
@@ -180,6 +199,54 @@ public class ValidateCert {
 
         // Récursion : Vérifier le certificat suivant en remontant
         return verifierRecursive(chain, index - 1);
+    }
+
+    /**
+     *
+     * @param cert
+     * @return
+     */
+    public static boolean verifierSignatureRSA_BigInteger(X509Certificate cert) {
+        try {
+            // Récupérer la clé publique RSA
+            PublicKey publicKey = cert.getPublicKey();
+            if (!(publicKey instanceof RSAPublicKey)) {
+                System.err.println("❌ Erreur : La clé publique du certificat n'est pas RSA.");
+                return false;
+            }
+
+            RSAPublicKey rsaPublicKey = (RSAPublicKey) publicKey;
+            BigInteger modulus = rsaPublicKey.getModulus();  // N (modulus)
+            BigInteger exponent = rsaPublicKey.getPublicExponent(); // e (exponent)
+
+            // Récupérer la signature chiffrée
+            byte[] signatureBytes = cert.getSignature();
+            BigInteger signature = new BigInteger(1, signatureBytes); // S (signature chiffrée)
+
+            // Effectuer le calcul de la signature RSA manuellement : M = S^e mod N
+            BigInteger decryptedMessage = signature.modPow(exponent, modulus);
+
+            // Récupérer le hash attendu du certificat
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");  // Algorithme SHA-256
+            byte[] tbsCertificate = cert.getTBSCertificate(); // Structure signée du certificat
+            byte[] expectedHash = digest.digest(tbsCertificate); // H(M) attendu
+
+            // Extraire les derniers octets de decryptedMessage (car il contient un padding PKCS#1 v1.5)
+            byte[] decryptedBytes = decryptedMessage.toByteArray();
+            byte[] extractedHash = Arrays.copyOfRange(decryptedBytes, decryptedBytes.length - expectedHash.length, decryptedBytes.length);
+
+            // Comparaison des hashes
+            if (Arrays.equals(extractedHash, expectedHash)) {
+                System.out.println("✔ Vérification de signature RSA avec BigInteger réussie.");
+                return true;
+            } else {
+                System.err.println("❌ Échec de la vérification de signature RSA avec BigInteger.");
+                return false;
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Erreur lors de la vérification de la signature RSA avec BigInteger : " + e.getMessage());
+            return false;
+        }
     }
 
 }
