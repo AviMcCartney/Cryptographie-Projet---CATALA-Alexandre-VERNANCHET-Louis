@@ -51,7 +51,7 @@ public class Main {
 
                 System.out.println("\n=== Validation de la chaîne de certificats ===");
                 if (ValidateCert.verifierChaineCertificats(certChain)) {
-                    System.out.println("Fin de la fonction");
+                    System.out.println("✔ La chaîne de certificats est valide !");
                 } else {
                     System.err.println("❌ La chaîne de certificats est invalide.");
                 }

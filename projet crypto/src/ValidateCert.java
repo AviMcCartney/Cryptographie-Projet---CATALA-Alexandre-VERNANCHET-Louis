@@ -143,45 +143,43 @@ public class ValidateCert {
             return false;
         }
 
-        try {
-            // Vérifier chaque certificat (sauf Root) est bien signé par le précédent
-            for (int i = 1; i < chain.size(); i++) {
-                X509Certificate issuerCert = chain.get(i - 1); // Root ou Intermediate
-                X509Certificate cert = chain.get(i); // Intermediate ou Leaf
+        return verifierRecursive(chain, chain.size() - 1); // On commence par le Leaf Cert
+    }
 
-                // Vérification de la signature
-                try {
-                    cert.verify(issuerCert.getPublicKey());
-                    System.out.println("✔ Le certificat " + cert.getSubjectX500Principal() + " est bien signé par " + issuerCert.getSubjectX500Principal());
-                } catch (Exception e) {
-                    System.err.println("❌ Erreur : Le certificat " + cert.getSubjectX500Principal() + " n'est pas signé par " + issuerCert.getSubjectX500Principal());
-                    return false;
-                }
-
-                // Vérification de la correspondance Sujet / Émetteur
-                if (!cert.getIssuerX500Principal().equals(issuerCert.getSubjectX500Principal())) {
-                    System.err.println("❌ Erreur : L'émetteur du certificat " + cert.getIssuerX500Principal() + " ne correspond pas au sujet du certificat parent " + issuerCert.getSubjectX500Principal());
-                    return false;
-                }
-            }
-
-            // Vérifier que le Root CA est auto-signé
+    private static boolean verifierRecursive(List<X509Certificate> chain, int index) {
+        // Condition de sortie : On atteint le Root CA (index 0)
+        if (index == 0) {
             X509Certificate rootCert = chain.get(0);
             try {
                 rootCert.verify(rootCert.getPublicKey());
-                System.out.println("✔ Le certificat racine est auto-signé et valide.");
+                System.out.println("✔ Le certificat racine " + rootCert.getSubjectX500Principal() + " est auto-signé et valide.");
+                return true;
             } catch (Exception e) {
-                System.err.println("❌ Erreur : Le certificat racine n'est pas auto-signé correctement.");
+                System.err.println("❌ Erreur : Le certificat racine " + rootCert.getSubjectX500Principal() + " n'est pas auto-signé correctement.");
                 return false;
             }
+        }
 
-            System.out.println("✔ La chaîne de certificats est valide !");
-            return true;
+        // Vérification de la signature du certificat courant par le suivant (on remonte)
+        X509Certificate cert = chain.get(index);      // Certificat actuel (Leaf, puis Intermediate)
+        X509Certificate issuerCert = chain.get(index - 1);  // Certificat parent (Intermediate, puis Root)
+
+        try {
+            cert.verify(issuerCert.getPublicKey());
+            System.out.println("✔ Le certificat " + cert.getSubjectX500Principal() + " est bien signé par " + issuerCert.getSubjectX500Principal());
         } catch (Exception e) {
-            System.err.println("Erreur lors de la validation de la chaîne : " + e.getMessage());
+            System.err.println("❌ Erreur : Le certificat " + cert.getSubjectX500Principal() + " n'est pas signé par " + issuerCert.getSubjectX500Principal());
             return false;
         }
-    }
 
+        // Vérification de la correspondance Sujet / Émetteur
+        if (!cert.getIssuerX500Principal().equals(issuerCert.getSubjectX500Principal())) {
+            System.err.println("❌ Erreur : L'émetteur du certificat " + cert.getIssuerX500Principal() + " ne correspond pas au sujet du certificat parent " + issuerCert.getSubjectX500Principal());
+            return false;
+        }
+
+        // Récursion : Vérifier le certificat suivant en remontant
+        return verifierRecursive(chain, index - 1);
+    }
 
 }
