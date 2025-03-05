@@ -8,6 +8,8 @@ import java.security.Signature;
 import java.security.cert.X509Certificate;
 import java.security.cert.CertificateFactory;
 import java.util.Base64;
+import java.util.List;
+
 
 public class ValidateCert {
 
@@ -134,4 +136,52 @@ public class ValidateCert {
         System.out.println("Date de fin de validité : " + cert.getNotAfter());
         System.out.println("Numéro de série : " + cert.getSerialNumber());
     }
+
+    public static boolean verifierChaineCertificats(List<X509Certificate> chain) {
+        if (chain == null || chain.isEmpty()) {
+            System.err.println("❌ Erreur : La chaîne de certificats est vide ou nulle.");
+            return false;
+        }
+
+        try {
+            // Vérifier chaque certificat (sauf Root) est bien signé par le précédent
+            for (int i = 1; i < chain.size(); i++) {
+                X509Certificate issuerCert = chain.get(i - 1); // Root ou Intermediate
+                X509Certificate cert = chain.get(i); // Intermediate ou Leaf
+
+                // Vérification de la signature
+                try {
+                    cert.verify(issuerCert.getPublicKey());
+                    System.out.println("✔ Le certificat " + cert.getSubjectX500Principal() + " est bien signé par " + issuerCert.getSubjectX500Principal());
+                } catch (Exception e) {
+                    System.err.println("❌ Erreur : Le certificat " + cert.getSubjectX500Principal() + " n'est pas signé par " + issuerCert.getSubjectX500Principal());
+                    return false;
+                }
+
+                // Vérification de la correspondance Sujet / Émetteur
+                if (!cert.getIssuerX500Principal().equals(issuerCert.getSubjectX500Principal())) {
+                    System.err.println("❌ Erreur : L'émetteur du certificat " + cert.getIssuerX500Principal() + " ne correspond pas au sujet du certificat parent " + issuerCert.getSubjectX500Principal());
+                    return false;
+                }
+            }
+
+            // Vérifier que le Root CA est auto-signé
+            X509Certificate rootCert = chain.get(0);
+            try {
+                rootCert.verify(rootCert.getPublicKey());
+                System.out.println("✔ Le certificat racine est auto-signé et valide.");
+            } catch (Exception e) {
+                System.err.println("❌ Erreur : Le certificat racine n'est pas auto-signé correctement.");
+                return false;
+            }
+
+            System.out.println("✔ La chaîne de certificats est valide !");
+            return true;
+        } catch (Exception e) {
+            System.err.println("Erreur lors de la validation de la chaîne : " + e.getMessage());
+            return false;
+        }
+    }
+
+
 }

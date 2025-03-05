@@ -5,10 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="22177dfe-7415-4177-8259-3f03dd35a9bd" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/dbnavigator.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dbnavigator.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/projet crypto/Main.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/projet crypto/Main.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/out/production/projet crypto/ValidateCert.class" beforeDir="false" afterPath="$PROJECT_DIR$/out/production/projet crypto/ValidateCert.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/projet crypto/Main.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/out/production/projet crypto/ValidateCert.class" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/Main.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ValidateCert.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/ValidateCert.java" afterDir="false" />
     </list>
@@ -27,6 +28,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
   </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;AviMcCartney&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/AviMcCartney/Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis.git&quot;,
+    &quot;accountId&quot;: &quot;49f23178-1ae4-4aaa-b0fc-6224e0a78cb3&quot;
+  }
+}</component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
@@ -50,9 +63,11 @@
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "git-widget-placeholder": "Validation-d'un-certificat-d'autorité-racine",
+    "git-widget-placeholder": "Validation-d'une-chaîne-de-certificats",
+    "ignore.virus.scanning.warn.message": "true",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/Users/louis/OneDrive/Documents/GitHub/Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis/projet crypto/Lemonde/PEM"
+    "last_opened_file_path": "C:/Users/louis/OneDrive/Documents/GitHub/Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis/projet crypto/Lemonde/PEM",
+    "settings.editor.selected.configurable": "configurable.group.tools"
   }
 }]]></component>
   <component name="RecentsManager">
@@ -65,7 +80,7 @@
     <configuration name="Main" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="Main" />
       <module name="projet crypto" />
-      <option name="PROGRAM_PARAMETERS" value="validate-cert -format DER &quot;C:\Users\louis\OneDrive\Documents\GitHub\Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis\projet crypto\Lemonde\DER\GlobalSign_root_lemonde_der.der&quot;" />
+      <option name="PROGRAM_PARAMETERS" value="validate-cert-chain -format PEM &quot;C:\Users\Alexandre\OneDrive\Bureau\Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis\projet crypto\Lemonde\PEM\GlobalSign_root_lemonde_pem.crt&quot; &quot;C:\Users\Alexandre\OneDrive\Bureau\Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis\projet crypto\Lemonde\PEM\Sousca_lemonde_pem.crt&quot; &quot;C:\Users\Alexandre\OneDrive\Bureau\Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis\projet crypto\Lemonde\PEM\lemonde_pem.crt&quot;" />
       <method v="2">
         <option name="Make" enabled="true" />
       </method>

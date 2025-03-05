@@ -1,64 +1,119 @@
+import java.io.File;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Main {
     public static void main(String[] args) {
-
-        //Vérification des arguments de la commande (le nombre d'argument et si l'orthographe de la commande est le bon)
-        if (args.length != 4 || !args[0].equals("validate-cert") || !args[1].equals("-format")) {
-            System.err.println("Erreur: Mauvais format d'arguments.");
-            System.err.println("Usage attendu: validate-cert -format DER|PEM <chemin_du_certificat>");
+        if (args.length < 4) {
+            afficherAide();
             return;
         }
 
-
+        String commande = args[0];
         String format = args[2];
-        String filePath = args[3];
 
-        X509Certificate cert = null;
-
-        //Lancement des fonctions selon les arguments
         try {
-            if (format.equalsIgnoreCase("DER")) {
-                //Si dans les Arguments le format est DER
-                cert = ValidateCert.affichage_DER(filePath);
-            } else if (format.equalsIgnoreCase("PEM")) {
-                //Si dans les Arguments le format est PEM
-                cert = ValidateCert.affichage_PEM(filePath);
+            if (commande.equals("validate-cert")) {
+                if (args.length != 4) {
+                    afficherAide();
+                    return;
+                }
+
+                String filePath = args[3];
+                X509Certificate cert = chargerCertificat(format, filePath);
+
+                if (cert == null) {
+                    System.err.println("❌ Échec du chargement du certificat.");
+                    return;
+                }
+
+                afficherInfos(cert);
+
+            } else if (commande.equals("validate-cert-chain")) {
+                if (args.length < 5) {
+                    afficherAide();
+                    return;
+                }
+
+                List<X509Certificate> certChain = new ArrayList<>();
+
+                // Charger les certificats en respectant l'ordre Root → Intermediate → Leaf
+                for (int i = 3; i < args.length; i++) {
+                    X509Certificate cert = chargerCertificat(format, args[i]);
+
+                    if (cert != null) {
+                        certChain.add(cert);
+                    } else {
+                        System.err.println("❌ Erreur lors du chargement du certificat : " + args[i]);
+                    }
+                }
+
+                System.out.println("\n=== Validation de la chaîne de certificats ===");
+                if (ValidateCert.verifierChaineCertificats(certChain)) {
+                    System.out.println("Fin de la fonction");
+                } else {
+                    System.err.println("❌ La chaîne de certificats est invalide.");
+                }
             } else {
-                //Si dans les Arguments le format est invalide
-                System.err.println("Erreur: Format non reconnu. Utilisez DER ou PEM.");
-                return;
+                afficherAide();
             }
-
-            //Afficher le certificat
-            ValidateCert.afficherInfosCertificat(cert);
-
-            //Vérification de la signature
-            System.out.println("=== Vérification de la signature ===");
-            if (ValidateCert.verifierSignature(cert)) {
-                System.out.println("La signature du certificat est valide.");
-            } else {
-                System.out.println("La signature du certificat est invalide.");
-            }
-
-            //Vérification de la validité
-            System.out.println("=== Vérification de la validité ===");
-            if (ValidateCert.verifierDate(cert)) {
-                System.out.println("Le certificat est valide en termes de date.");
-            } else {
-                System.out.println("Le certificat est expiré ou non valide.");
-            }
-
-            //Vérification de l'usage des clés
-            System.out.println("=== Vérification de l'usage des clés ===");
-            ValidateCert.verifierKeyUsage(cert);
-
-            //Vérification de l'algorithme et de la signature
-            System.out.println("=== Vérification de l'algorithme et de la signature ===");
-            ValidateCert.verifierAlgorithmeEtSignature(cert);
-
         } catch (Exception e) {
-            System.err.println("Erreur lors de l'analyse du certificat: " + e.getMessage());
+            System.err.println("Erreur : " + e.getMessage());
         }
+    }
+
+    private static X509Certificate chargerCertificat(String format, String filePath) {
+        try {
+            // Vérifie si le fichier existe avant de le lire
+            File file = new File(filePath);
+            if (!file.exists()) {
+                System.err.println("❌ Fichier introuvable : " + filePath);
+                return null;
+            }
+
+            if (format.equalsIgnoreCase("DER")) {
+                return ValidateCert.affichage_DER(filePath);
+            } else if (format.equalsIgnoreCase("PEM")) {
+                return ValidateCert.affichage_PEM(filePath);
+            } else {
+                System.err.println("Erreur : Format non reconnu. Utilisez DER ou PEM.");
+                return null;
+            }
+        } catch (Exception e) {
+            System.err.println("Erreur lors du chargement du certificat : " + e.getMessage());
+            return null;
+        }
+    }
+
+    private static void afficherInfos(X509Certificate cert) {
+        System.out.println("\n=== Informations du Certificat ===");
+        ValidateCert.afficherInfosCertificat(cert);
+
+        System.out.println("\n=== Vérification de la signature ===");
+        if (ValidateCert.verifierSignature(cert)) {
+            System.out.println("✔ La signature du certificat est valide.");
+        } else {
+            System.out.println("❌ La signature du certificat est invalide.");
+        }
+
+        System.out.println("\n=== Vérification de la validité ===");
+        if (ValidateCert.verifierDate(cert)) {
+            System.out.println("✔ Le certificat est valide en termes de date.");
+        } else {
+            System.out.println("❌ Le certificat est expiré ou non valide.");
+        }
+
+        System.out.println("\n=== Vérification de l'usage des clés ===");
+        ValidateCert.verifierKeyUsage(cert);
+
+        System.out.println("\n=== Vérification de l'algorithme et de la signature ===");
+        ValidateCert.verifierAlgorithmeEtSignature(cert);
+    }
+
+    private static void afficherAide() {
+        System.out.println("\nUsage : ");
+        System.out.println(" - validate-cert -format DER|PEM <fichier_certificat>");
+        System.out.println(" - validate-cert-chain -format DER|PEM <certificat1> <certificat2> ... <certificatN>");
     }
 }
