@@ -1,6 +1,6 @@
-/**
- * Importation des classes nécessaires
- */
+package org.example;
+
+//Importation des classes nécessaires
 import java.io.*;
 import java.nio.file.*;
 import java.security.PublicKey;
@@ -13,6 +13,21 @@ import java.util.List;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.interfaces.RSAPublicKey;
+import org.bouncycastle.asn1.ASN1Integer;
+import org.bouncycastle.asn1.ASN1Sequence;
+import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.x9.X9ECParameters;
+import org.bouncycastle.crypto.params.ECDomainParameters;
+import org.bouncycastle.crypto.params.ECPublicKeyParameters;
+import org.bouncycastle.jce.ECNamedCurveTable;
+import org.bouncycastle.jce.interfaces.ECPublicKey;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.jce.spec.ECParameterSpec;
+import org.bouncycastle.math.ec.ECPoint;
+
+import java.security.Security;
+
+
 
 
 public class ValidateCert {
@@ -102,7 +117,7 @@ public class ValidateCert {
             return false;
         }
     }
-    
+
     /**
      * Fonction qui vérifie l'algorithme de signature ainsi que la validité de la signature
      * @param cert Le certificat à analyser
@@ -133,7 +148,7 @@ public class ValidateCert {
     }
 
     /**
-     * 
+     *
      * @param cert
      */
     public static void afficherInfosCertificat(X509Certificate cert) {
@@ -248,5 +263,6 @@ public class ValidateCert {
             return false;
         }
     }
+
 
 }
