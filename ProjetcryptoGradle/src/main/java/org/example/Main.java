@@ -38,6 +38,16 @@ public class Main {
                 } else {
                     System.out.println("❌ La signature RSA est invalide.");
                 }
+                System.out.println("\n=== Vérification de la signature ECDSA avec ECPoint ===");
+                List<X509Certificate> certList = new ArrayList<>();
+                certList.add(cert);
+
+                if (ValidateCert.verifierSignatureECDSA(certList)) {
+                    System.out.println("✔ La signature ECDSA est valide (calcul manuel avec ECPoint).");
+                } else {
+                    System.out.println("❌ La signature ECDSA est invalide.");
+                }
+
 
 
             } else if (commande.equals("validate-cert-chain")) {
@@ -48,7 +58,7 @@ public class Main {
 
                 List<X509Certificate> certChain = new ArrayList<>();
 
-                // Charger les certificats en respectant l'ordre Root → Intermediate → Leaf
+                // Charger les certificats en respectant l'ordre
                 for (int i = 3; i < args.length; i++) {
                     X509Certificate cert = chargerCertificat(format, args[i]);
 
@@ -64,6 +74,12 @@ public class Main {
                     System.out.println("✔ La chaîne de certificats est valide !");
                 } else {
                     System.err.println("❌ La chaîne de certificats est invalide.");
+                }
+                System.out.println("\n=== Vérification des signatures ECDSA dans la chaîne de certificats ===");
+                if (ValidateCert.verifierSignatureECDSA(certChain)) {
+                    System.out.println("Toutes les signatures ECDSA dans la chaîne sont valides !");
+                } else {
+                    System.err.println("Une ou plusieurs signatures ECDSA dans la chaîne sont invalides.");
                 }
             } else {
                 afficherAide();

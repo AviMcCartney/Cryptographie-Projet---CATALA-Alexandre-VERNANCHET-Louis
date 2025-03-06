@@ -3,29 +3,23 @@ package org.example;
 //Importation des classes nécessaires
 import java.io.*;
 import java.nio.file.*;
-import java.security.PublicKey;
-import java.security.Signature;
+import java.security.*;
 import java.security.cert.X509Certificate;
 import java.security.cert.CertificateFactory;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.List;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.*;
 import java.math.BigInteger;
-import java.security.MessageDigest;
 import java.security.interfaces.RSAPublicKey;
 import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.x9.X9ECParameters;
+import org.bouncycastle.crypto.ec.CustomNamedCurves;
 import org.bouncycastle.crypto.params.ECDomainParameters;
-import org.bouncycastle.crypto.params.ECPublicKeyParameters;
-import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.interfaces.ECPublicKey;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.ECParameterSpec;
 import org.bouncycastle.math.ec.ECPoint;
-
-import java.security.Security;
 
 
 
@@ -264,5 +258,115 @@ public class ValidateCert {
         }
     }
 
+    public static boolean verifierSignatureECDSA(List<X509Certificate> certChain) {
+        try {
+            Security.addProvider(new BouncyCastleProvider());
 
+            if (certChain == null || certChain.isEmpty()) {
+                System.err.println("❌ Erreur : Liste de certificats vide ou nulle.");
+                return false;
+            }
+
+            // 🔄 Inverser la liste pour que la validation commence par le certificat du site
+            Collections.reverse(certChain);
+            
+            for (int i = 0; i < certChain.size(); i++) {
+                X509Certificate cert = certChain.get(i);
+                PublicKey issuerPublicKey;
+
+                if (i < certChain.size() - 1) {
+                    // Si ce n'est pas le certificat racine, utiliser la clé publique du certificat suivant
+                    issuerPublicKey = certChain.get(i + 1).getPublicKey();
+                } else {
+                    // Si c'est le certificat racine, utiliser sa propre clé publique (auto-signé)
+                    issuerPublicKey = cert.getPublicKey();
+                }
+
+                // Vérifier si la clé publique est bien ECDSA
+                if (!(issuerPublicKey instanceof ECPublicKey)) {
+                    try {
+                        KeyFactory keyFactory = KeyFactory.getInstance("EC", "BC");
+                        issuerPublicKey = keyFactory.generatePublic(new X509EncodedKeySpec(issuerPublicKey.getEncoded()));
+                    } catch (Exception ex) {
+                        System.err.println("❌ Échec de la conversion de la clé en ECPublicKey : " + ex.getMessage());
+                        return false;
+                    }
+                }
+
+                ECPublicKey ecPublicKey = (ECPublicKey) issuerPublicKey;
+                ECParameterSpec ecSpec = ecPublicKey.getParameters();
+                ECPoint Q = ecPublicKey.getQ();
+
+                // Trouver la courbe associée
+                X9ECParameters ecParams = null;
+                for (Enumeration<?> names = CustomNamedCurves.getNames(); names.hasMoreElements();) {
+                    String name = (String) names.nextElement();
+                    X9ECParameters params = CustomNamedCurves.getByName(name);
+                    if (params != null && params.getCurve().equals(ecSpec.getCurve())) {
+                        ecParams = params;
+                        break;
+                    }
+                }
+
+                if (ecParams == null) {
+                    System.err.println("❌ Impossible d'identifier la courbe elliptique pour " + cert.getSubjectX500Principal());
+                    return false;
+                }
+
+                ECDomainParameters domainParams = new ECDomainParameters(ecParams.getCurve(), ecParams.getG(), ecParams.getN(), ecParams.getH());
+
+                // Récupérer l'algorithme de signature
+                String sigAlg = cert.getSigAlgName();
+                String hashAlgorithm;
+                if (sigAlg.contains("SHA256")) {
+                    hashAlgorithm = "SHA-256";
+                } else if (sigAlg.contains("SHA384")) {
+                    hashAlgorithm = "SHA-384";
+                } else if (sigAlg.contains("SHA512")) {
+                    hashAlgorithm = "SHA-512";
+                } else {
+                    System.err.println("❌ Algorithme de hachage non supporté : " + sigAlg);
+                    return false;
+                }
+
+                // Extraire la signature du certificat
+                byte[] signatureBytes = cert.getSignature();
+                ASN1InputStream asn1InputStream = new ASN1InputStream(signatureBytes);
+                ASN1Sequence asn1Sequence = (ASN1Sequence) asn1InputStream.readObject();
+                asn1InputStream.close();
+                BigInteger r = ((ASN1Integer) asn1Sequence.getObjectAt(0)).getValue();
+                BigInteger s = ((ASN1Integer) asn1Sequence.getObjectAt(1)).getValue();
+
+                // Calculer le hachage du certificat avec l'algorithme correct
+                MessageDigest digest = MessageDigest.getInstance(hashAlgorithm);
+                byte[] hash = digest.digest(cert.getTBSCertificate());
+                BigInteger e = new BigInteger(1, hash);
+
+                // Calculer w = s⁻¹ mod n
+                BigInteger w = s.modInverse(domainParams.getN());
+                BigInteger u1 = e.multiply(w).mod(domainParams.getN());
+                BigInteger u2 = r.multiply(w).mod(domainParams.getN());
+
+                // Calculer P = u1 * G + u2 * Q
+                ECPoint P = domainParams.getG().multiply(u1).add(Q.multiply(u2)).normalize();
+
+                if (P.isInfinity()) {
+                    System.err.println("❌ Échec de la vérification : Point à l'infini pour " + cert.getSubjectX500Principal());
+                    return false;
+                }
+
+                if (!P.getXCoord().toBigInteger().mod(domainParams.getN()).equals(r)) {
+                    System.err.println("❌ Échec de la vérification de signature ECDSA pour " + cert.getSubjectX500Principal());
+                    return false;
+                }
+
+                System.out.println("✔ Vérification de signature ECDSA réussie pour " + cert.getSubjectX500Principal());
+            }
+
+            return true;
+        } catch (Exception e) {
+            System.err.println("❌ Erreur lors de la vérification de signature ECDSA : " + e.getMessage());
+            return false;
+        }
+    }
 }
