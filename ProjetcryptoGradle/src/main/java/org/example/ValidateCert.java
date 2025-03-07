@@ -161,7 +161,7 @@ public class ValidateCert {
      */
     public static boolean verifierChaineCertificats(List<X509Certificate> chain) {
         if (chain == null || chain.isEmpty()) {
-            System.err.println("❌ Erreur : La chaîne de certificats est vide ou nulle.");
+            System.err.println("Erreur : La chaîne de certificats est vide ou nulle.");
             return false;
         }
 
@@ -177,13 +177,13 @@ public class ValidateCert {
     private static boolean verifierRecursive(List<X509Certificate> chain, int index) {
         // Condition de sortie : On atteint le Root CA (index 0)
         if (index == 0) {
-            X509Certificate rootCert = chain.get(0);
+            X509Certificate rootCert = chain.getFirst();
             try {
                 rootCert.verify(rootCert.getPublicKey());
-                System.out.println("✔ Le certificat racine " + rootCert.getSubjectX500Principal() + " est auto-signé et valide.");
+                System.out.println("Le certificat racine " + rootCert.getSubjectX500Principal() + " est auto-signé et valide.");
                 return true;
             } catch (Exception e) {
-                System.err.println("❌ Erreur : Le certificat racine " + rootCert.getSubjectX500Principal() + " n'est pas auto-signé correctement.");
+                System.err.println("Erreur : Le certificat racine " + rootCert.getSubjectX500Principal() + " n'est pas auto-signé correctement.");
                 return false;
             }
         }
@@ -194,15 +194,15 @@ public class ValidateCert {
 
         try {
             cert.verify(issuerCert.getPublicKey());
-            System.out.println("✔ Le certificat " + cert.getSubjectX500Principal() + " est bien signé par " + issuerCert.getSubjectX500Principal());
+            System.out.println("Le certificat " + cert.getSubjectX500Principal() + " est bien signé par " + issuerCert.getSubjectX500Principal());
         } catch (Exception e) {
-            System.err.println("❌ Erreur : Le certificat " + cert.getSubjectX500Principal() + " n'est pas signé par " + issuerCert.getSubjectX500Principal());
+            System.err.println("Erreur : Le certificat " + cert.getSubjectX500Principal() + " n'est pas signé par " + issuerCert.getSubjectX500Principal());
             return false;
         }
 
         // Vérification de la correspondance Sujet / Émetteur
         if (!cert.getIssuerX500Principal().equals(issuerCert.getSubjectX500Principal())) {
-            System.err.println("❌ Erreur : L'émetteur du certificat " + cert.getIssuerX500Principal() + " ne correspond pas au sujet du certificat parent " + issuerCert.getSubjectX500Principal());
+            System.err.println("Erreur : L'émetteur du certificat " + cert.getIssuerX500Principal() + " ne correspond pas au sujet du certificat parent " + issuerCert.getSubjectX500Principal());
             return false;
         }
 
@@ -212,64 +212,98 @@ public class ValidateCert {
 
     /**
      *
-     * @param cert
+     * @param certChain
      * @return
      */
-    public static boolean verifierSignatureRSA_BigInteger(X509Certificate cert) {
+    public static boolean verifierSignatureRSA_BigInteger(List<X509Certificate> certChain) {
         try {
-            // Récupérer la clé publique RSA
-            PublicKey publicKey = cert.getPublicKey();
-            if (!(publicKey instanceof RSAPublicKey)) {
-                System.err.println("❌ Erreur : La clé publique du certificat n'est pas RSA.");
+            if (certChain == null || certChain.isEmpty()) {
+                System.err.println("Erreur : Liste de certificats vide ou nulle.");
                 return false;
             }
 
-            RSAPublicKey rsaPublicKey = (RSAPublicKey) publicKey;
-            BigInteger modulus = rsaPublicKey.getModulus();  // N (modulus)
-            BigInteger exponent = rsaPublicKey.getPublicExponent(); // e (exponent)
+            Collections.reverse(certChain);
 
-            // Récupérer la signature chiffrée
-            byte[] signatureBytes = cert.getSignature();
-            BigInteger signature = new BigInteger(1, signatureBytes); // S (signature chiffrée)
+            for (int i = 0; i < certChain.size(); i++) {
+                X509Certificate cert = certChain.get(i);
+                PublicKey issuerPublicKey;
 
-            // Effectuer le calcul de la signature RSA manuellement : M = S^e mod N
-            BigInteger decryptedMessage = signature.modPow(exponent, modulus);
+                if (i < certChain.size() - 1) {
+                    // Utiliser la clé publique du certificat suivant (l'émetteur)
+                    issuerPublicKey = certChain.get(i + 1).getPublicKey();
+                } else {
+                    // Si c'est le certificat racine, utiliser sa propre clé publique
+                    issuerPublicKey = cert.getPublicKey();
+                }
 
-            // Récupérer le hash attendu du certificat
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");  // Algorithme SHA-256
-            byte[] tbsCertificate = cert.getTBSCertificate(); // Structure signée du certificat
-            byte[] expectedHash = digest.digest(tbsCertificate); // H(M) attendu
+                if (!(issuerPublicKey instanceof RSAPublicKey)) {
+                    System.err.println("Erreur : La clé publique du certificat " + cert.getSubjectX500Principal() + " n'est pas RSA.");
+                    return false;
+                }
 
-            // Extraire les derniers octets de decryptedMessage (car il contient un padding PKCS#1 v1.5)
-            byte[] decryptedBytes = decryptedMessage.toByteArray();
-            byte[] extractedHash = Arrays.copyOfRange(decryptedBytes, decryptedBytes.length - expectedHash.length, decryptedBytes.length);
+                RSAPublicKey rsaPublicKey = (RSAPublicKey) issuerPublicKey;
+                BigInteger modulus = rsaPublicKey.getModulus();  // N (modulus)
+                BigInteger exponent = rsaPublicKey.getPublicExponent(); // e (exponent)
 
-            // Comparaison des hashes
-            if (Arrays.equals(extractedHash, expectedHash)) {
-                System.out.println("✔ Vérification de signature RSA avec BigInteger réussie.");
-                return true;
-            } else {
-                System.err.println("❌ Échec de la vérification de signature RSA avec BigInteger.");
-                return false;
+                // Récupérer la signature chiffrée
+                byte[] signatureBytes = cert.getSignature();
+                BigInteger signature = new BigInteger(1, signatureBytes); // S (signature chiffrée)
+
+                // Effectuer le calcul de la signature RSA manuellement : M = S^e mod N
+                BigInteger decryptedMessage = signature.modPow(exponent, modulus);
+
+                // Détecter l'algorithme de hachage du certificat
+                String sigAlg = cert.getSigAlgName().toUpperCase();
+                String hashAlgorithm;
+                if (sigAlg.contains("SHA256")) {
+                    hashAlgorithm = "SHA-256";
+                } else if (sigAlg.contains("SHA384")) {
+                    hashAlgorithm = "SHA-384";
+                } else if (sigAlg.contains("SHA512")) {
+                    hashAlgorithm = "SHA-512";
+                } else {
+                    System.err.println("Algorithme de hachage non supporté : " + sigAlg);
+                    return false;
+                }
+
+                // Récupérer le hash attendu du certificat
+                MessageDigest digest = MessageDigest.getInstance(hashAlgorithm);
+                byte[] tbsCertificate = cert.getTBSCertificate(); // Structure signée du certificat
+                byte[] expectedHash = digest.digest(tbsCertificate); // H(M) attendu
+
+                // Extraire les derniers octets de decryptedMessage (car il contient un padding PKCS#1 v1.5)
+                byte[] decryptedBytes = decryptedMessage.toByteArray();
+                byte[] extractedHash = Arrays.copyOfRange(decryptedBytes, decryptedBytes.length - expectedHash.length, decryptedBytes.length);
+
+                // Comparaison des hashes
+                if (!Arrays.equals(extractedHash, expectedHash)) {
+                    System.err.println("Échec de la vérification de signature RSA pour " + cert.getSubjectX500Principal());
+                    return false;
+                }
+
+                System.out.println("Vérification de signature RSA réussie pour " + cert.getSubjectX500Principal());
             }
+
+            return true;
         } catch (Exception e) {
-            System.err.println("❌ Erreur lors de la vérification de la signature RSA avec BigInteger : " + e.getMessage());
+            System.err.println("Erreur lors de la vérification de signature RSA : " + e.getMessage());
             return false;
         }
     }
+
 
     public static boolean verifierSignatureECDSA(List<X509Certificate> certChain) {
         try {
             Security.addProvider(new BouncyCastleProvider());
 
             if (certChain == null || certChain.isEmpty()) {
-                System.err.println("❌ Erreur : Liste de certificats vide ou nulle.");
+                System.err.println("Erreur : Liste de certificats vide ou nulle.");
                 return false;
             }
 
-            // 🔄 Inverser la liste pour que la validation commence par le certificat du site
+            // Inverser la liste pour que la validation commence par le certificat du site
             Collections.reverse(certChain);
-            
+
             for (int i = 0; i < certChain.size(); i++) {
                 X509Certificate cert = certChain.get(i);
                 PublicKey issuerPublicKey;
@@ -288,7 +322,7 @@ public class ValidateCert {
                         KeyFactory keyFactory = KeyFactory.getInstance("EC", "BC");
                         issuerPublicKey = keyFactory.generatePublic(new X509EncodedKeySpec(issuerPublicKey.getEncoded()));
                     } catch (Exception ex) {
-                        System.err.println("❌ Échec de la conversion de la clé en ECPublicKey : " + ex.getMessage());
+                        System.err.println("Échec de la conversion de la clé en ECPublicKey : " + ex.getMessage());
                         return false;
                     }
                 }
@@ -309,7 +343,7 @@ public class ValidateCert {
                 }
 
                 if (ecParams == null) {
-                    System.err.println("❌ Impossible d'identifier la courbe elliptique pour " + cert.getSubjectX500Principal());
+                    System.err.println("Impossible d'identifier la courbe elliptique pour " + cert.getSubjectX500Principal());
                     return false;
                 }
 
@@ -325,7 +359,7 @@ public class ValidateCert {
                 } else if (sigAlg.contains("SHA512")) {
                     hashAlgorithm = "SHA-512";
                 } else {
-                    System.err.println("❌ Algorithme de hachage non supporté : " + sigAlg);
+                    System.err.println("Algorithme de hachage non supporté : " + sigAlg);
                     return false;
                 }
 
@@ -351,21 +385,21 @@ public class ValidateCert {
                 ECPoint P = domainParams.getG().multiply(u1).add(Q.multiply(u2)).normalize();
 
                 if (P.isInfinity()) {
-                    System.err.println("❌ Échec de la vérification : Point à l'infini pour " + cert.getSubjectX500Principal());
+                    System.err.println("Échec de la vérification : Point à l'infini pour " + cert.getSubjectX500Principal());
                     return false;
                 }
 
                 if (!P.getXCoord().toBigInteger().mod(domainParams.getN()).equals(r)) {
-                    System.err.println("❌ Échec de la vérification de signature ECDSA pour " + cert.getSubjectX500Principal());
+                    System.err.println("Échec de la vérification de signature ECDSA pour " + cert.getSubjectX500Principal());
                     return false;
                 }
 
-                System.out.println("✔ Vérification de signature ECDSA réussie pour " + cert.getSubjectX500Principal());
+                System.out.println("Vérification de signature ECDSA réussie pour " + cert.getSubjectX500Principal());
             }
 
             return true;
         } catch (Exception e) {
-            System.err.println("❌ Erreur lors de la vérification de signature ECDSA : " + e.getMessage());
+            System.err.println("Erreur lors de la vérification de signature ECDSA : " + e.getMessage());
             return false;
         }
     }

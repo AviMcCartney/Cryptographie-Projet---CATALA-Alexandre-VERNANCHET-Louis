@@ -26,30 +26,38 @@ public class Main {
                 X509Certificate cert = chargerCertificat(format, filePath);
 
                 if (cert == null) {
-                    System.err.println("❌ Échec du chargement du certificat.");
+                    System.err.println("Échec du chargement du certificat.");
                     return;
                 }
 
                 afficherInfos(cert);
 
-                System.out.println("\n=== Vérification de la signature RSA avec BigInteger ===");
-                if (ValidateCert.verifierSignatureRSA_BigInteger(cert)) {
-                    System.out.println("✔ La signature RSA est valide (calcul manuel avec BigInteger).");
-                } else {
-                    System.out.println("❌ La signature RSA est invalide.");
+                //On regarde quel est l'algorithme de signature pour savoir quel fonction appliquer
+                String sigAlg = cert.getSigAlgName().toUpperCase();
+                if(sigAlg.contains("RSA")){
+                    System.out.println("\n=== Vérification de la signature RSA avec BigInteger ===");
+                    List<X509Certificate> certList = new ArrayList<>();
+                    certList.add(cert);
+
+                    if (ValidateCert.verifierSignatureRSA_BigInteger(certList)) {
+                        System.out.println("La signature RSA est valide (calcul manuel avec BigInteger).");
+                    } else {
+                        System.out.println("La signature RSA est invalide.");
+                    }
+                } else if (sigAlg.contains("ECDSA")) {
+                    System.out.println("\n=== Vérification de la signature ECDSA avec ECPoint ===");
+                    List<X509Certificate> certList = new ArrayList<>();
+                    certList.add(cert);
+
+                    if (ValidateCert.verifierSignatureECDSA(certList)) {
+                        System.out.println("La signature ECDSA est valide (calcul manuel avec ECPoint).");
+                    } else {
+                        System.out.println("La signature ECDSA est invalide.");
+                    }
                 }
-                System.out.println("\n=== Vérification de la signature ECDSA avec ECPoint ===");
-                List<X509Certificate> certList = new ArrayList<>();
-                certList.add(cert);
-
-                if (ValidateCert.verifierSignatureECDSA(certList)) {
-                    System.out.println("✔ La signature ECDSA est valide (calcul manuel avec ECPoint).");
-                } else {
-                    System.out.println("❌ La signature ECDSA est invalide.");
+                else {
+                    System.err.println("Algorithme de signature non supporté" + sigAlg);
                 }
-
-
-
             } else if (commande.equals("validate-cert-chain")) {
                 if (args.length < 5) {
                     afficherAide();
@@ -65,21 +73,37 @@ public class Main {
                     if (cert != null) {
                         certChain.add(cert);
                     } else {
-                        System.err.println("❌ Erreur lors du chargement du certificat : " + args[i]);
+                        System.err.println("Erreur lors du chargement du certificat : " + args[i]);
                     }
                 }
 
                 System.out.println("\n=== Validation de la chaîne de certificats ===");
                 if (ValidateCert.verifierChaineCertificats(certChain)) {
-                    System.out.println("✔ La chaîne de certificats est valide !");
+                    System.out.println("La chaîne de certificats est valide !");
                 } else {
-                    System.err.println("❌ La chaîne de certificats est invalide.");
+                    System.err.println("La chaîne de certificats est invalide.");
                 }
-                System.out.println("\n=== Vérification des signatures ECDSA dans la chaîne de certificats ===");
-                if (ValidateCert.verifierSignatureECDSA(certChain)) {
-                    System.out.println("Toutes les signatures ECDSA dans la chaîne sont valides !");
-                } else {
-                    System.err.println("Une ou plusieurs signatures ECDSA dans la chaîne sont invalides.");
+
+                //On regarde quel est l'algorithme de signature pour savoir quel fonction appliquer
+                String sigAlg = certChain.getFirst().getSigAlgName().toUpperCase();
+
+                if(sigAlg.contains("RSA")){
+                    System.out.println("\n=== Vérification des signatures RSA dans la chaîne de certificats ===");
+                    if (ValidateCert.verifierSignatureRSA_BigInteger(certChain)) {
+                        System.out.println("Toutes les signatures RSA dans la chaîne sont valides !");
+                    } else {
+                        System.err.println("Une ou plusieurs signatures RSA dans la chaîne sont invalides.");
+                    }
+                } else if (sigAlg.contains("ECDSA")) {
+                    System.out.println("\n=== Vérification des signatures ECDSA dans la chaîne de certificats ===");
+                    if (ValidateCert.verifierSignatureECDSA(certChain)) {
+                        System.out.println("Toutes les signatures ECDSA dans la chaîne sont valides !");
+                    } else {
+                        System.err.println("Une ou plusieurs signatures ECDSA dans la chaîne sont invalides.");
+                    }
+                }
+                else {
+                    System.err.println("Algorithme de signature non supporté" + sigAlg);
                 }
             } else {
                 afficherAide();
@@ -94,7 +118,7 @@ public class Main {
             // Vérifie si le fichier existe avant de le lire
             File file = new File(filePath);
             if (!file.exists()) {
-                System.err.println("❌ Fichier introuvable : " + filePath);
+                System.err.println("Fichier introuvable : " + filePath);
                 return null;
             }
 
@@ -118,16 +142,16 @@ public class Main {
 
         System.out.println("\n=== Vérification de la signature ===");
         if (ValidateCert.verifierSignature(cert)) {
-            System.out.println("✔ La signature du certificat est valide.");
+            System.out.println("La signature du certificat est valide.");
         } else {
-            System.out.println("❌ La signature du certificat est invalide.");
+            System.out.println("La signature du certificat est invalide.");
         }
 
         System.out.println("\n=== Vérification de la validité ===");
         if (ValidateCert.verifierDate(cert)) {
-            System.out.println("✔ Le certificat est valide en termes de date.");
+            System.out.println("Le certificat est valide en termes de date.");
         } else {
-            System.out.println("❌ Le certificat est expiré ou non valide.");
+            System.out.println("Le certificat est expiré ou non valide.");
         }
 
         System.out.println("\n=== Vérification de l'usage des clés ===");
@@ -140,6 +164,6 @@ public class Main {
     private static void afficherAide() {
         System.out.println("\nUsage : ");
         System.out.println(" - validate-cert -format DER|PEM <fichier_certificat>");
-        System.out.println(" - validate-cert-chain -format DER|PEM <certificat1> <certificat2> ... <certificatN>");
+        System.out.println(" - validate-cert-chain -format DER|PEM <certificatRoot> <certificat2> ... <certificatN>");
     }
 }
