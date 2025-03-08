@@ -76,24 +76,49 @@ public class ValidateCert {
         }
     }
 
-    /**
-     * Fonction qui affiche les usages de clé qui sont définis dans un certificat x509
-     * @param cert Le certificat dont les usages de clé doivent être vérifiés
-     * {@link X509Certificate#getKeyUsage() Récupère ce qui est écrit dans l'extension keyusage}
-     */
-    public static void verifierKeyUsage(X509Certificate cert) {
-        boolean[] keyUsage = cert.getKeyUsage();
-        if (keyUsage != null) {
-            System.out.println("Key Usage:");
-            String[] usages = {"Digital Signature", "Non Repudiation", "Key Encipherment", "Data Encipherment", "Key Agreement", "Certificate Signing", "CRL Signing", "Encipher Only", "Decipher Only"};
-            for (int i = 0; i < keyUsage.length; i++) {
-                if (keyUsage[i]) {
-                    System.out.println("✔ " + usages[i]);
+
+    public static boolean verifierKeyUsage(List<X509Certificate> certChain) {
+        if (certChain == null || certChain.isEmpty()) {
+            System.err.println("Liste de certificats vide ou nulle.");
+            return false;
+        }
+
+        boolean isSingleRoot = (certChain.size() == 1); // Si on a un seul certificat, c'est un root
+
+        for (int i = 0; i < certChain.size(); i++) {
+            X509Certificate cert = certChain.get(i);
+            boolean[] keyUsage = cert.getKeyUsage();
+
+            // Déterminer le niveau du certificat
+            boolean isRoot = isSingleRoot || i == certChain.size() - 1;
+            boolean isLeaf = !isSingleRoot && i == 0;
+
+            // Si l'extension KeyUsage n'est pas définie, on considère qu'il n'y a pas de restriction
+            if (keyUsage == null) {
+                System.out.println("Aucun KeyUsage spécifié, le certificat est peut-être valide.");
+                continue;
+            }
+
+            boolean hasRequiredUsage = false;
+            for (int j = 0; j < keyUsage.length; j++) {
+                if (keyUsage[j]) {
+                    // Vérification selon le type de certificat
+                    if (!isSingleRoot && i == 0 && j == 0) hasRequiredUsage = true; // Leaf -> Digital Signature
+                    if ((isSingleRoot || i > 0) && j == 5) hasRequiredUsage = true; // Root ou intermédiaire -> Certificate Signing
                 }
             }
-        } else {
-            System.out.println("Key Usage non spécifié dans le certificat.");
+
+            // Vérification finale en fonction du type de certificat
+            if (!isSingleRoot && i == 0 && !hasRequiredUsage) {
+                System.err.println("Le certificat Leaf doit avoir 'Digital Signature'.");
+                return false;
+            }
+            if ((isSingleRoot || i > 0) && !hasRequiredUsage) {
+                System.err.println("Le certificat Intermédiaire/Root doit avoir 'Certificate Signing'.");
+                return false;
+            }
         }
+        return true;
     }
 
     /**
@@ -141,10 +166,6 @@ public class ValidateCert {
         }
     }
 
-    /**
-     *
-     * @param cert
-     */
     public static void afficherInfosCertificat(X509Certificate cert) {
         System.out.println("=== Informations du Certificat ===");
         System.out.println("Sujet : " + cert.getSubjectX500Principal());
@@ -154,11 +175,6 @@ public class ValidateCert {
         System.out.println("Numéro de série : " + cert.getSerialNumber());
     }
 
-    /**
-     *
-     * @param chain
-     * @return
-     */
     public static boolean verifierChaineCertificats(List<X509Certificate> chain) {
         if (chain == null || chain.isEmpty()) {
             System.err.println("Erreur : La chaîne de certificats est vide ou nulle.");
@@ -168,12 +184,6 @@ public class ValidateCert {
         return verifierRecursive(chain, chain.size() - 1); // On commence par le Leaf Cert
     }
 
-    /**
-     *
-     * @param chain
-     * @param index
-     * @return
-     */
     private static boolean verifierRecursive(List<X509Certificate> chain, int index) {
         // Condition de sortie : On atteint le Root CA (index 0)
         if (index == 0) {
@@ -210,11 +220,6 @@ public class ValidateCert {
         return verifierRecursive(chain, index - 1);
     }
 
-    /**
-     *
-     * @param certChain
-     * @return
-     */
     public static boolean verifierSignatureRSA_BigInteger(List<X509Certificate> certChain) {
         try {
             if (certChain == null || certChain.isEmpty()) {
@@ -236,21 +241,12 @@ public class ValidateCert {
                     issuerPublicKey = cert.getPublicKey();
                 }
 
-                if (!(issuerPublicKey instanceof RSAPublicKey)) {
+                if (!(issuerPublicKey instanceof RSAPublicKey rsaPublicKey)) {
                     System.err.println("Erreur : La clé publique du certificat " + cert.getSubjectX500Principal() + " n'est pas RSA.");
                     return false;
                 }
 
-                RSAPublicKey rsaPublicKey = (RSAPublicKey) issuerPublicKey;
-                BigInteger modulus = rsaPublicKey.getModulus();  // N (modulus)
-                BigInteger exponent = rsaPublicKey.getPublicExponent(); // e (exponent)
-
-                // Récupérer la signature chiffrée
-                byte[] signatureBytes = cert.getSignature();
-                BigInteger signature = new BigInteger(1, signatureBytes); // S (signature chiffrée)
-
-                // Effectuer le calcul de la signature RSA manuellement : M = S^e mod N
-                BigInteger decryptedMessage = signature.modPow(exponent, modulus);
+                BigInteger decryptedMessage = getBigInteger(rsaPublicKey, cert);
 
                 // Détecter l'algorithme de hachage du certificat
                 String sigAlg = cert.getSigAlgName().toUpperCase();
@@ -291,6 +287,17 @@ public class ValidateCert {
         }
     }
 
+    private static BigInteger getBigInteger(RSAPublicKey rsaPublicKey, X509Certificate cert) {
+        BigInteger modulus = rsaPublicKey.getModulus();  // N (modulus)
+        BigInteger exponent = rsaPublicKey.getPublicExponent(); // e (exponent)
+
+        // Récupérer la signature chiffrée
+        byte[] signatureBytes = cert.getSignature();
+        BigInteger signature = new BigInteger(1, signatureBytes); // S (signature chiffrée)
+
+        // Effectuer le calcul de la signature RSA manuellement : M = S^e mod N
+        return signature.modPow(exponent, modulus);
+    }
 
     public static boolean verifierSignatureECDSA(List<X509Certificate> certChain) {
         try {

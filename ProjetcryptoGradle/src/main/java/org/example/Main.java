@@ -105,6 +105,15 @@ public class Main {
                 else {
                     System.err.println("Algorithme de signature non supporté" + sigAlg);
                 }
+
+                System.out.println("\n=== Vérification des KeyUsage dans la chaîne ===");
+                if (ValidateCert.verifierKeyUsage(certChain)) {
+                    System.out.println("Tous les certificats de la chaîne ont des KeyUsage valides !");
+                } else {
+                    System.err.println("Erreur : Un ou plusieurs certificats ont un KeyUsage invalide.");
+                }
+
+
             } else {
                 afficherAide();
             }
@@ -154,8 +163,11 @@ public class Main {
             System.out.println("Le certificat est expiré ou non valide.");
         }
 
-        System.out.println("\n=== Vérification de l'usage des clés ===");
-        ValidateCert.verifierKeyUsage(cert);
+        System.out.println("\n=== Vérification du KeyUsage ===");
+        List<X509Certificate> certList = new ArrayList<>();
+        certList.add(cert);
+        ValidateCert.verifierKeyUsage(certList);
+
 
         System.out.println("\n=== Vérification de l'algorithme et de la signature ===");
         ValidateCert.verifierAlgorithmeEtSignature(cert);
