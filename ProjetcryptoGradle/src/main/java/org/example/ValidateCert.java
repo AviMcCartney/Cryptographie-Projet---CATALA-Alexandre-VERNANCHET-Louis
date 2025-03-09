@@ -27,10 +27,10 @@ import org.bouncycastle.math.ec.ECPoint;
 public class ValidateCert {
 
     /**
-     *  Fonction qui charge un certificat X.509 au format DER depuis un fichier donné
-     * @param filePath Chemin du fichier contenant le certificat en format DER
-     * @return Un objet x509 Certificate
-     * @throws Exception S'il y a une erreur à la lecture du fichier
+     * Charge un certificat X.509 au format DER depuis un fichier
+     * @param filePath Chemin du fichier contenant le certificat au format DER
+     * @return Un objet x509 Certificate ou une exception en cas d'erreur
+     * @throws Exception S'il y a une erreur lors de la lecture du fichier
      */
     public static X509Certificate affichage_DER(String filePath) throws Exception {
         CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
@@ -40,10 +40,10 @@ public class ValidateCert {
     }
 
     /**
-     * Fonction qui charge un certificat X.509 au format PEM depuis un fichier donné
+     * Charge un certificat X.509 au format PEM depuis un fichier
      * @param filePath Chemin du fichier contenant le certificat au format PEM
-     * @return Un objet x509 Certificate
-     * @throws Exception S'il y a une erreur à la lecture du fichier
+     * @return Un objet x509 Certificate ou une exception en cas d'erreur
+     * @throws Exception S'il y a une erreur lors de la lecture du fichier
      */
     public static X509Certificate affichage_PEM(String filePath) throws Exception {
         CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
@@ -58,13 +58,13 @@ public class ValidateCert {
     }
 
     /**
-     * Fonction permettant de vérifier la signature d'un certificat en utilisant sa propre clé publique
+     * Vérifie si un certificat est auto-signé en utilisant sa propre clé publique
      * Cette méthode sert uniquement dans la partie 1 du projet et est remplacé par verifiersignatureRSA/ECDSA
-     * @param cert Certificat X509 à vérifier
+     * @param cert Certificat X.509 à vérifier
      * @see java.security.cert.X509Certificate
      * {@link X509Certificate#verify(PublicKey) Fonctionne sur les certificats auto-signés car ils sont signés avec leur propre clé privée et peuvent être validés avec leur clé
      * publique}
-     * @return true si la signature est valide, false avec un message d'erreur sinon
+     * @return true si le certificat est auto-signé, false sinon
      */
     public static boolean verifierSignature(X509Certificate cert) {
         try {
@@ -77,19 +77,24 @@ public class ValidateCert {
         }
     }
 
-
+    /**
+     * Vérifie les usages de clé (KeyUsage) d'une chaîne de certificats
+     * @param certChain Liste des certificats à vérifier
+     * @return true si tous les certificats respectent les usages clés attendus, false sinon
+     */
     public static boolean verifierKeyUsage(List<X509Certificate> certChain) {
         if (IsChainNull(certChain)) {
             return false;
         }
 
-        boolean isSingleRoot = (certChain.size() == 1); // Si on a un seul certificat, c'est un root
+        //Si on a un seul certificat, c'est un root
+        boolean isSingleRoot = (certChain.size() == 1);
 
         for (int i = 0; i < certChain.size(); i++) {
             X509Certificate cert = certChain.get(i);
             boolean[] keyUsage = cert.getKeyUsage();
 
-            // Si l'extension KeyUsage n'est pas définie, on considère qu'il n'y a pas de restriction
+            //Si l'extension KeyUsage n'est pas définie, on considère qu'il n'y a pas de restriction
             if (keyUsage == null) {
                 System.out.println("Aucun KeyUsage spécifié, le certificat est peut-être valide.");
                 continue;
@@ -98,13 +103,13 @@ public class ValidateCert {
             boolean hasRequiredUsage = false;
             for (int j = 0; j < keyUsage.length; j++) {
                 if (keyUsage[j]) {
-                    // Vérification selon le type de certificat
-                    if (!isSingleRoot && i == 0 && j == 0) hasRequiredUsage = true; // Leaf -> Digital Signature
-                    if ((isSingleRoot || i > 0) && j == 5) hasRequiredUsage = true; // Root ou intermédiaire -> Certificate Signing
+                    //Vérification selon le type de certificat
+                    if (!isSingleRoot && i == 0 && j == 0) hasRequiredUsage = true; // Leaf → Digital Signature
+                    if ((isSingleRoot || i > 0) && j == 5) hasRequiredUsage = true; // Root ou intermédiaire → Certificate Signing
                 }
             }
 
-            // Vérification finale en fonction du type de certificat
+            //Vérification finale en fonction du type de certificat
             if (!isSingleRoot && i == 0 && !hasRequiredUsage) {
                 System.err.println("Le certificat Leaf doit avoir 'Digital Signature'.");
                 return false;
@@ -118,8 +123,8 @@ public class ValidateCert {
     }
 
     /**
-     * Fonction qui permet la vérification de la date d'expiration du certificat
-     * @param cert le certificat x509 à vérifier
+     * Vérifie si un certificat est toujours valide en termes de date
+     * @param cert Certificat à vérifier
      * {@link X509Certificate#checkValidity() prend la date de début et de fin de validité et les compare à la date actuelle}
      * @return true si la date est valide, false sinon
      */
@@ -134,19 +139,18 @@ public class ValidateCert {
     }
 
     /**
-     * Fonction qui vérifie l'algorithme de signature ainsi que la validité de la signature
-     * Cette fonction était utile pour répondre à la question 6 de la première partie.
+     * Vérifie l'algorithme de signature ainsi que la validité de la signature
+     * Cette fonction était utile pour répondre à la question six de la première partie.
      * Maintenant, il est plus intéressant d'utiliser verifiersignatureRSA/ECDSA
-     * @param cert Le certificat à analyser
-     * {@link X509Certificate#getSigAlgName() récupération de l'algorithme de signature utilisé}
-     * {@link X509Certificate#getSignature() récupération de la signature}
+     * @param cert Le certificat à vérifier
+     * {@link X509Certificate#getSigAlgName() Récupération de l'algorithme de signature utilisé}
+     * {@link X509Certificate#getSignature() Récupération de la signature}
      * {@link X509Certificate#getPublicKey() Récupération de la clé publique}
      * {@link java.security.Signature#getInstance(String) Création d'un objet Signature à partir de l'algorithme de signature}
      * {@link java.security.Signature#initVerify(PublicKey) Initialisation de l'objet}
-     * {@link java.security.Signature#update(byte) Mise à jour de l'objet avce la structure du certificat}
+     * {@link java.security.Signature#update(byte) Mise à jour de l'objet avec la structure du certificat}
      * {@link X509Certificate#getTBSCertificate() Renvoie toutes les informations du certificat sauf la signature}
-     * {@link java.security.Signature#verify(byte[]) verification de la signature en comparant les données signées avec la signature extraite}
-     * {@link java.io.PrintStream#println(char) Affichage des résultats}
+     * {@link java.security.Signature#verify(byte[]) Vérification de la signature en comparant les données signées avec la signature extraite}
      */
     public static void verifierAlgorithmeEtSignature(X509Certificate cert) {
         try {
@@ -164,6 +168,10 @@ public class ValidateCert {
         }
     }
 
+    /**
+     * Affiche les informations générales d'un certificat X.509
+     * @param cert Certificat X.509 dont on veut afficher les informations
+     */
     public static void afficherInfosCertificat(X509Certificate cert) {
         System.out.println("=== Informations du Certificat ===");
         System.out.println("Sujet : " + cert.getSubjectX500Principal());
@@ -173,16 +181,27 @@ public class ValidateCert {
         System.out.println("Numéro de série : " + cert.getSerialNumber());
     }
 
+    /**
+     * Vérifie la validité d'une chaîne de certificats en s'assurant que chaque certificat est bien signé par son émetteur
+     * @param chain Liste des certificats représentant la chaîne
+     * @return true si la chaîne est valide, false sinon
+     */
     public static boolean verifierChaineCertificats(List<X509Certificate> chain) {
         if (IsChainNull(chain)) {
             return false;
         }
 
-        return verifierRecursive(chain, chain.size() - 1); // On commence par le Leaf Cert
+        //Vérification récursive en partant du Leaf
+        return verifierRecursive(chain, chain.size() - 1);
     }
 
+    /**
+     * Vérifie récursivement la validité de la chaîne de certificats
+     * @param chain Liste des certificats
+     * @param index Position actuelle dans la liste
+     * @return true si la chaîne est valide, false sinon
+     */
     private static boolean verifierRecursive(List<X509Certificate> chain, int index) {
-        // Condition de sortie : On atteint le Root CA (index 0)
         if (index == 0) {
             X509Certificate rootCert = chain.getFirst();
             try {
@@ -195,9 +214,9 @@ public class ValidateCert {
             }
         }
 
-        // Vérification de la signature du certificat courant par le suivant (on remonte)
-        X509Certificate cert = chain.get(index);      // Certificat actuel (Leaf, puis Intermediate)
-        X509Certificate issuerCert = chain.get(index - 1);  // Certificat parent (Intermediate, puis Root)
+        //Vérification de la signature du certificat courant par le suivant (on remonte)
+        X509Certificate cert = chain.get(index);
+        X509Certificate issuerCert = chain.get(index - 1);
 
         try {
             cert.verify(issuerCert.getPublicKey());
@@ -207,16 +226,21 @@ public class ValidateCert {
             return false;
         }
 
-        // Vérification de la correspondance Sujet / Émetteur
+        //Vérification de la correspondance Sujet / Émetteur
         if (!cert.getIssuerX500Principal().equals(issuerCert.getSubjectX500Principal())) {
             System.err.println("Erreur : L'émetteur du certificat " + cert.getIssuerX500Principal() + " ne correspond pas au sujet du certificat parent " + issuerCert.getSubjectX500Principal());
             return false;
         }
 
-        // Récursion : Vérifier le certificat suivant en remontant
+        //Vérification récursive sur le certificat précédent
         return verifierRecursive(chain, index - 1);
     }
 
+    /**
+     * Vérifie la signature RSA d'une chaîne de certificats en utilisant BigInteger
+     * @param certChain Liste des certificats à vérifier
+     * @return true si toutes les signatures sont valides, false sinon
+     */
     public static boolean verifierSignatureRSA_BigInteger(List<X509Certificate> certChain) {
         try {
             if (IsChainNull(certChain)) {
@@ -230,10 +254,10 @@ public class ValidateCert {
                 PublicKey issuerPublicKey;
 
                 if (i < certChain.size() - 1) {
-                    // Utiliser la clé publique du certificat suivant (l'émetteur)
+                    //Utiliser la clé publique du certificat émetteur
                     issuerPublicKey = certChain.get(i + 1).getPublicKey();
                 } else {
-                    // Si c'est le certificat racine, utiliser sa propre clé publique
+                    //Si c'est le Root CA, il est auto-signé
                     issuerPublicKey = cert.getPublicKey();
                 }
 
@@ -244,7 +268,7 @@ public class ValidateCert {
 
                 BigInteger decryptedMessage = getBigInteger(rsaPublicKey, cert);
 
-                // Détecter l'algorithme de hachage du certificat
+                //Détecter l'algorithme de hachage du certificat
                 String sigAlg = cert.getSigAlgName().toUpperCase();
                 String hashAlgorithm;
                 if (sigAlg.contains("SHA256")) {
@@ -258,16 +282,15 @@ public class ValidateCert {
                     return false;
                 }
 
-                // Récupérer le hash attendu du certificat
+                //Vérification du hash de la signature
                 MessageDigest digest = MessageDigest.getInstance(hashAlgorithm);
-                byte[] tbsCertificate = cert.getTBSCertificate(); // Structure signée du certificat
-                byte[] expectedHash = digest.digest(tbsCertificate); // H(M) attendu
+                byte[] tbsCertificate = cert.getTBSCertificate();
+                byte[] expectedHash = digest.digest(tbsCertificate);
 
-                // Extraire les derniers octets de decryptedMessage (car il contient un padding PKCS#1 v1.5)
+                //Comparaison avec la signature déchiffrée
                 byte[] decryptedBytes = decryptedMessage.toByteArray();
                 byte[] extractedHash = Arrays.copyOfRange(decryptedBytes, decryptedBytes.length - expectedHash.length, decryptedBytes.length);
 
-                // Comparaison des hashes
                 if (!Arrays.equals(extractedHash, expectedHash)) {
                     System.err.println("Échec de la vérification de signature RSA pour " + cert.getSubjectX500Principal());
                     return false;
@@ -283,6 +306,12 @@ public class ValidateCert {
         }
     }
 
+    /**
+     * Effectue le déchiffrement de la signature RSA d'un certificat
+     * @param rsaPublicKey Clé publique RSA utilisée pour le déchiffrement
+     * @param cert Certificat dont on veut déchiffrer la signature
+     * @return La valeur BigInteger de la signature déchiffrée
+     */
     private static BigInteger getBigInteger(RSAPublicKey rsaPublicKey, X509Certificate cert) {
         BigInteger modulus = rsaPublicKey.getModulus();  // N (modulus)
         BigInteger exponent = rsaPublicKey.getPublicExponent(); // e (exponent)
@@ -295,15 +324,23 @@ public class ValidateCert {
         return signature.modPow(exponent, modulus);
     }
 
+    /**
+     * Vérifie la signature ECDSA d'une chaîne de certificats
+     * Cette méthode utilise la bibliothèque BouncyCastle pour effectuer la vérification de la signature
+     * ECDSA de chaque certificat avec la clé publique de son émetteur
+     * @param certChain Liste des certificats à vérifier
+     * @return true si toutes les signatures sont valides, false sinon
+     */
     public static boolean verifierSignatureECDSA(List<X509Certificate> certChain) {
         try {
+            //Ajoute BouncyCastle comme fournisseur de sécurité
             Security.addProvider(new BouncyCastleProvider());
 
             if (IsChainNull(certChain)) {
                 return false;
             }
 
-            // Inverser la liste pour que la validation commence par le certificat du site
+            // Inverser la liste pour que la validation commence par le certificat leaf
             Collections.reverse(certChain);
 
             for (int i = 0; i < certChain.size(); i++) {
@@ -311,14 +348,14 @@ public class ValidateCert {
                 PublicKey issuerPublicKey;
 
                 if (i < certChain.size() - 1) {
-                    // Si ce n'est pas le certificat racine, utiliser la clé publique du certificat suivant
+                    //Si ce n'est pas le certificat racine, utiliser la clé publique du certificat suivant
                     issuerPublicKey = certChain.get(i + 1).getPublicKey();
                 } else {
-                    // Si c'est le certificat racine, utiliser sa propre clé publique (auto-signé)
+                    //Si c'est le certificat racine, utiliser sa propre clé publique
                     issuerPublicKey = cert.getPublicKey();
                 }
 
-                // Vérifier si la clé publique est bien ECDSA
+                //Vérifier si la clé publique est bien ECDSA
                 if (!(issuerPublicKey instanceof ECPublicKey)) {
                     try {
                         KeyFactory keyFactory = KeyFactory.getInstance("EC", "BC");
@@ -329,11 +366,12 @@ public class ValidateCert {
                     }
                 }
 
+                //Extraction des paramètres de la courbe elliptique
                 ECPublicKey ecPublicKey = (ECPublicKey) issuerPublicKey;
                 ECParameterSpec ecSpec = ecPublicKey.getParameters();
                 ECPoint Q = ecPublicKey.getQ();
 
-                // Trouver la courbe associée
+                //Identification de la courbe utilisée
                 X9ECParameters ecParams = null;
                 for (Enumeration<?> names = CustomNamedCurves.getNames(); names.hasMoreElements();) {
                     String name = (String) names.nextElement();
@@ -349,9 +387,10 @@ public class ValidateCert {
                     return false;
                 }
 
+                //Définition des paramètres de domaine pour ECDSA
                 ECDomainParameters domainParams = new ECDomainParameters(ecParams.getCurve(), ecParams.getG(), ecParams.getN(), ecParams.getH());
 
-                // Récupérer l'algorithme de signature
+                //Récupérer l'algorithme de signature
                 String sigAlg = cert.getSigAlgName();
                 String hashAlgorithm;
                 if (sigAlg.contains("SHA256")) {
@@ -365,7 +404,7 @@ public class ValidateCert {
                     return false;
                 }
 
-                // Extraire la signature du certificat
+                //Extraire la signature du certificat
                 byte[] signatureBytes = cert.getSignature();
                 ASN1InputStream asn1InputStream = new ASN1InputStream(signatureBytes);
                 ASN1Sequence asn1Sequence = (ASN1Sequence) asn1InputStream.readObject();
@@ -373,32 +412,31 @@ public class ValidateCert {
                 BigInteger r = ((ASN1Integer) asn1Sequence.getObjectAt(0)).getValue();
                 BigInteger s = ((ASN1Integer) asn1Sequence.getObjectAt(1)).getValue();
 
-                // Calculer le hachage du certificat avec l'algorithme correct
+                //Calculer le hachage du certificat avec l'algorithme correspondant
                 MessageDigest digest = MessageDigest.getInstance(hashAlgorithm);
                 byte[] hash = digest.digest(cert.getTBSCertificate());
                 BigInteger e = new BigInteger(1, hash);
 
-                // Calculer w = s⁻¹ mod n
+                //Calculer w = s*pow(-1) mod n
                 BigInteger w = s.modInverse(domainParams.getN());
                 BigInteger u1 = e.multiply(w).mod(domainParams.getN());
                 BigInteger u2 = r.multiply(w).mod(domainParams.getN());
 
-                // Calculer P = u1 * G + u2 * Q
+                //Calculer P = u1 * G + u2 * Q
                 ECPoint P = domainParams.getG().multiply(u1).add(Q.multiply(u2)).normalize();
 
+                //Vérification du point résultant
                 if (P.isInfinity()) {
                     System.err.println("Échec de la vérification : Point à l'infini pour " + cert.getSubjectX500Principal());
                     return false;
                 }
 
+                //Comparaison de r avec la coordonnée x de P modulo n
                 if (!P.getXCoord().toBigInteger().mod(domainParams.getN()).equals(r)) {
                     System.err.println("Échec de la vérification de signature ECDSA pour " + cert.getSubjectX500Principal());
                     return false;
                 }
-
-                System.out.println("Vérification de signature ECDSA réussie pour " + cert.getSubjectX500Principal());
             }
-
             return true;
         } catch (Exception e) {
             System.err.println("Erreur lors de la vérification de signature ECDSA : " + e.getMessage());
@@ -406,13 +444,19 @@ public class ValidateCert {
         }
     }
 
+    /**
+     * Vérifie la validité des Basic Constraints pour une chaîne de certificats
+     * @param certChain Liste des certificats à vérifier
+     * {@link X509Certificate#getBasicConstraints() Récupération de l'extension BasicConstraint}
+     * @return true si les Basic Constraints sont respectées, false sinon
+     */
     public static boolean verifierBasicConstraints(List<X509Certificate> certChain) {
 
         if (IsChainNull(certChain)) {
             return false;
         }
 
-        boolean isSingleRoot = (certChain.size() == 1); // Si un seul certificat, c'est un root
+        boolean isSingleRoot = (certChain.size() == 1);
 
         for (int i = 0; i < certChain.size(); i++) {
             X509Certificate cert = certChain.get(i);
@@ -420,18 +464,18 @@ public class ValidateCert {
             // Déterminer le rôle du certificat
             boolean isRoot = isSingleRoot || i == certChain.size() - 1;
             boolean isLeaf = !isSingleRoot && i == 0;
-            boolean isLastInterm = (i == certChain.size() - 2); // Dernier intermédiaire avant le Leaf
+            boolean isLastInterm = (i == certChain.size() - 2);
 
             int basicConstraints = cert.getBasicConstraints();
 
             if (isLeaf) {
-                // Vérification que le certificat Leaf n'est pas un CA (doit être `CA:FALSE`)
+                // Vérification que le certificat Leaf n'est pas un CA
                 if (basicConstraints != -1) {
                     System.err.println("Erreur : Le certificat Leaf ne doit pas être un CA.");
                     return false;
                 }
             } else {
-                // Vérification que le certificat est un CA (`CA:TRUE`)
+                // Vérification que le certificat est un CA
                 if (basicConstraints == -1) {
                     System.err.println("Erreur : Le certificat " + cert.getSubjectX500Principal() +
                             " n'est pas un CA, mais il est dans la chaîne de certification.");
@@ -441,7 +485,6 @@ public class ValidateCert {
                 // Vérification du pathLenConstraint pour les intermédiaires
                 int expectedMaxIntermediates = certChain.size() - (i + 1);
 
-                // Correction : Ne pas bloquer si le dernier intermédiaire ne doit signer que des Leaf
                 if (!isRoot && !isLastInterm && basicConstraints >= 0 && basicConstraints < expectedMaxIntermediates) {
                     System.err.println("Erreur : Le certificat " + cert.getSubjectX500Principal() +
                             " a un pathLenConstraint trop faible (" + basicConstraints + "), il ne peut pas signer autant d'intermédiaires.");
@@ -452,6 +495,11 @@ public class ValidateCert {
         return true;
     }
 
+    /**
+     * Vérifie si une liste de certificats est vide ou nulle
+     * @param chain Liste de certificats
+     * @return true si la liste est vide ou nulle, false sinon
+     */
     public static boolean IsChainNull (List<X509Certificate> chain){
         if (chain == null || chain.isEmpty()) {
             System.err.println("Erreur : Liste de certificats vide ou nulle.");

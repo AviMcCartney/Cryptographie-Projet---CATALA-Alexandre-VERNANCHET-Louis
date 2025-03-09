@@ -7,52 +7,64 @@ import java.util.List;
 
 public class Main {
     public static void main(String[] args) {
+        //Vérification de la saisie utilisateur
         if (args.length < 4) {
             afficherAide();
             return;
         }
-
+        //Enregistrement de ce qui est saisi dans des variables
         String commande = args[0];
         String format = args[2];
 
         try {
+            //Si on a un seul certificat
             if (commande.equals("validate-cert")) {
+                //On vérifie le nombre de paramètres
                 if (args.length != 4) {
                     afficherAide();
                     return;
                 }
 
+                //Lecture du fichier selon le format
                 String filePath = args[3];
                 X509Certificate cert = chargerCertificat(format, filePath);
 
+                //Vérification de la lecture
                 if (cert == null) {
                     System.err.println("Échec du chargement du certificat.");
                     return;
                 }
 
+                //Afficher les informations du certificat
                 afficherInfos(cert);
 
-                // Vérification de la signature en fonction de l'algorithme
+                //Vérification de la signature en fonction de l'algorithme
                 verifierSignature(List.of(cert));
 
-                // Vérifications des propriétés du certificat
+                //Vérifications des propriétés du certificat
                 verifierProprietesCertificat(List.of(cert));
 
-            } else if (commande.equals("validate-cert-chain")) {
+            } // Si on a une chaîne de certificat
+            else if (commande.equals("validate-cert-chain")) {
+                //On vérifie le nombre de paramètres
                 if (args.length < 5) {
                     afficherAide();
                     return;
                 }
 
+                //Lecture des fichiers selon le format
                 List<X509Certificate> certChain = chargerChaineCertificats(format, args);
 
+                //Vérification de la lecture
                 if (certChain.isEmpty()) {
                     System.err.println("Erreur : Impossible de charger la chaîne de certificats.");
                     return;
                 }
 
+                //Afficher les informations des certificats
                 afficherInfosCertificatChaine(certChain);
 
+                //Validation de la chaîne
                 System.out.println("\n=== Validation de la chaîne de certificats ===");
                 if (ValidateCert.verifierChaineCertificats(certChain)) {
                     System.out.println("La chaîne de certificats est valide !");
@@ -67,6 +79,7 @@ public class Main {
                 verifierProprietesCertificat(certChain);
 
             } else {
+                //Affichage du bon format de commande à saisir
                 afficherAide();
             }
         } catch (Exception e) {
@@ -74,6 +87,12 @@ public class Main {
         }
     }
 
+    /**
+     * Charge un certificat X.509 à partir d'un fichier en format DER ou PEM
+     * @param format Format du certificat ("DER" ou "PEM")
+     * @param filePath Chemin du fichier du certificat
+     * @return Le certificat X509 chargé, ou null en cas d'erreur
+     */
     private static X509Certificate chargerCertificat(String format, String filePath) {
         try {
             File file = new File(filePath);
@@ -96,6 +115,12 @@ public class Main {
         }
     }
 
+    /**
+     * Charge une chaîne de certificats X.509 à partir des fichiers spécifiés
+     * @param format Format des certificats ("DER" ou "PEM")
+     * @param args Tableau contenant les chemins des fichiers des certificats
+     * @return Une liste de certificats X.509 chargés, ou une liste vide en cas d'erreur
+     */
     private static List<X509Certificate> chargerChaineCertificats(String format, String[] args) {
         List<X509Certificate> certChain = new ArrayList<>();
         for (int i = 3; i < args.length; i++) {
@@ -109,6 +134,10 @@ public class Main {
         return certChain;
     }
 
+    /**
+     * Affiche les informations détaillées d'un certificat unique
+     * @param cert Certificat X.509 dont on veut afficher les informations
+     */
     private static void afficherInfos(X509Certificate cert) {
         System.out.println("\n=== Informations du Certificat ===");
         ValidateCert.afficherInfosCertificat(cert);
@@ -121,6 +150,10 @@ public class Main {
         }
     }
 
+    /**
+     * Affiche les informations de tous les certificats d'une chaîne de certification
+     * @param certChain Liste des certificats X.509
+     */
     private static void afficherInfosCertificatChaine(List<X509Certificate> certChain) {
         System.out.println("\n=== Informations de la Chaîne de Certificats ===");
 
@@ -133,7 +166,7 @@ public class Main {
             } else if (i == certChain.size() - 1) {
                 niveauCertificat = "Leaf";
             } else {
-                niveauCertificat = "Intermediaire";
+                niveauCertificat = "Intermédiaire";
             }
 
             System.out.println("\n" + niveauCertificat + " : " + cert.getSubjectX500Principal());
@@ -141,6 +174,10 @@ public class Main {
         }
     }
 
+    /**
+     * Vérifie la signature des certificats en fonction de leur algorithme (RSA ou ECDSA)
+     * @param certs Liste des certificats dont la signature doit être vérifiée
+     */
     private static void verifierSignature(List<X509Certificate> certs) {
         String sigAlg = certs.getFirst().getSigAlgName().toUpperCase();
 
@@ -163,6 +200,10 @@ public class Main {
         }
     }
 
+    /**
+     * Vérifie les propriétés du certificat ou de la chaîne de certificats (KeyUsage, BasicConstraints)
+     * @param certs Liste des certificats à vérifier
+     */
     private static void verifierProprietesCertificat(List<X509Certificate> certs) {
         System.out.println("\n=== Vérification des KeyUsage ===");
         if (ValidateCert.verifierKeyUsage(certs)) {
@@ -179,6 +220,7 @@ public class Main {
         }
     }
 
+    // Méthode pour afficher l'aide sur la ligne de commande
     private static void afficherAide() {
         System.out.println("\nUsage : ");
         System.out.println(" - validate-cert -format DER|PEM <fichier_certificat>");
