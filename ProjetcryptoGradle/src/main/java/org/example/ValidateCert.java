@@ -89,10 +89,6 @@ public class ValidateCert {
             X509Certificate cert = certChain.get(i);
             boolean[] keyUsage = cert.getKeyUsage();
 
-            // Déterminer le niveau du certificat
-            boolean isRoot = isSingleRoot || i == certChain.size() - 1;
-            boolean isLeaf = !isSingleRoot && i == 0;
-
             // Si l'extension KeyUsage n'est pas définie, on considère qu'il n'y a pas de restriction
             if (keyUsage == null) {
                 System.out.println("Aucun KeyUsage spécifié, le certificat est peut-être valide.");
@@ -409,5 +405,51 @@ public class ValidateCert {
             System.err.println("Erreur lors de la vérification de signature ECDSA : " + e.getMessage());
             return false;
         }
+    }
+
+    public static boolean verifierBasicConstraints(List<X509Certificate> certChain) {
+        if (certChain == null || certChain.isEmpty()) {
+            System.err.println("Erreur : Liste de certificats vide ou nulle.");
+            return false;
+        }
+
+        boolean isSingleRoot = (certChain.size() == 1); // Si un seul certificat, c'est un root
+
+        for (int i = 0; i < certChain.size(); i++) {
+            X509Certificate cert = certChain.get(i);
+
+            // Déterminer le rôle du certificat
+            boolean isRoot = isSingleRoot || i == certChain.size() - 1;
+            boolean isLeaf = !isSingleRoot && i == 0;
+            boolean isLastInterm = (i == certChain.size() - 2); // Dernier intermédiaire avant le Leaf
+
+            int basicConstraints = cert.getBasicConstraints();
+
+            if (isLeaf) {
+                // Vérification que le certificat Leaf n'est pas un CA (doit être `CA:FALSE`)
+                if (basicConstraints != -1) {
+                    System.err.println("Erreur : Le certificat Leaf ne doit pas être un CA.");
+                    return false;
+                }
+            } else {
+                // Vérification que le certificat est un CA (`CA:TRUE`)
+                if (basicConstraints == -1) {
+                    System.err.println("Erreur : Le certificat " + cert.getSubjectX500Principal() +
+                            " n'est pas un CA, mais il est dans la chaîne de certification.");
+                    return false;
+                }
+
+                // Vérification du pathLenConstraint pour les intermédiaires
+                int expectedMaxIntermediates = certChain.size() - (i + 1);
+
+                // Correction : Ne pas bloquer si le dernier intermédiaire ne doit signer que des Leaf
+                if (!isRoot && !isLastInterm && basicConstraints >= 0 && basicConstraints < expectedMaxIntermediates) {
+                    System.err.println("Erreur : Le certificat " + cert.getSubjectX500Principal() +
+                            " a un pathLenConstraint trop faible (" + basicConstraints + "), il ne peut pas signer autant d'intermédiaires.");
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }

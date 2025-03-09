@@ -58,6 +58,24 @@ public class Main {
                 else {
                     System.err.println("Algorithme de signature non supporté" + sigAlg);
                 }
+
+                System.out.println("\n=== Vérification des KeyUsage dans la chaîne ===");
+                List<X509Certificate> certList = new ArrayList<>();
+                certList.add(cert);
+                if (ValidateCert.verifierKeyUsage(certList)) {
+                    System.out.println("Tous les certificats de la chaîne ont des KeyUsage valides !");
+                } else {
+                    System.err.println("Erreur : Un ou plusieurs certificats ont un KeyUsage invalide.");
+                }
+
+                System.out.println("\n=== Vérification de Basic Constraints ===");
+                if (ValidateCert.verifierBasicConstraints(certList)) {
+                    System.out.println("Le certificat respecte les Basic Constraints !");
+                } else {
+                    System.err.println("Erreur : Basic Constraints invalide.");
+                }
+
+
             } else if (commande.equals("validate-cert-chain")) {
                 if (args.length < 5) {
                     afficherAide();
@@ -111,6 +129,13 @@ public class Main {
                     System.out.println("Tous les certificats de la chaîne ont des KeyUsage valides !");
                 } else {
                     System.err.println("Erreur : Un ou plusieurs certificats ont un KeyUsage invalide.");
+                }
+
+                System.out.println("\n=== Vérification des Basic Constraints dans la chaîne ===");
+                if (ValidateCert.verifierBasicConstraints(certChain)) {
+                    System.out.println("Tous les certificats de la chaîne respectent les Basic Constraints !");
+                } else {
+                    System.err.println("Erreur : Un ou plusieurs certificats ont des Basic Constraints invalides.");
                 }
 
 
