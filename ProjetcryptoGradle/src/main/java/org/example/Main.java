@@ -80,7 +80,7 @@ public class Main {
                 verifierProprietesCertificat(certChain);
 
                 //Vérification de la CRL
-                verifierRevocationCRL(certChain);
+                verifierRevocation(certChain);
 
             } else {
                 //Affichage du bon format de commande à saisir
@@ -224,30 +224,33 @@ public class Main {
         }
     }
 
-    /**
-     * Vérifie la révocation des certificats via CRL
-     * @param certChain Liste des certificats à vérifier
-     */
-    private static void verifierRevocationCRL(List<X509Certificate> certChain) {
+    private static void verifierRevocation(List<X509Certificate> certChain) {
+        System.out.println("\n=== Vérification de la révocation via OCSP et CRL ===");
 
-        System.out.println("\n=== Vérification de la révocation via CRL ===");
-
-        Collections.reverse(certChain);
+        Collections.reverse(certChain); // Vérifier du Leaf vers le Root
 
         for (int i = certChain.size() - 1; i > 0; i--) {
             X509Certificate certToCheck = certChain.get(i);
+            X509Certificate issuerCert = certChain.get(i - 1);
 
-            List<X509Certificate> possibleIssuers = new ArrayList<>(certChain.subList(0, i));
-
-            boolean estRevoque = ValidateCert.verifierRevocationAvecCRL(certToCheck, possibleIssuers);
-
-            if (estRevoque) {
-                System.err.println("Attention : Le certificat " + certToCheck.getSubjectX500Principal() + " a été révoqué !");
-            } else {
-                System.out.println("Le certificat " + certToCheck.getSubjectX500Principal() + " n'est pas révoqué.");
+            // Vérification via OCSP si possible
+            boolean estRevoqueOCSP = ValidateCert.verifierRevocationOCSP(certToCheck, issuerCert);
+            if (estRevoqueOCSP) {
+                System.err.println("Le certificat " + certToCheck.getSubjectX500Principal() + " est révoqué selon OCSP !");
+                return;
             }
+
+            // Si OCSP n'est pas disponible, bascule sur CRL
+            boolean estRevoqueCRL = ValidateCert.verifierRevocationAvecCRL(certToCheck, List.of(issuerCert));
+            if (estRevoqueCRL) {
+                System.err.println("Le certificat " + certToCheck.getSubjectX500Principal() + " est révoqué selon la CRL !");
+                return;
+            }
+
+            System.out.println("Le certificat " + certToCheck.getSubjectX500Principal() + " n'est pas révoqué.");
         }
     }
+
 
     // Méthode pour afficher l'aide sur la ligne de commande
     private static void afficherAide() {
