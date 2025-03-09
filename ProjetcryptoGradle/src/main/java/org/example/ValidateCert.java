@@ -2,27 +2,25 @@ package org.example;
 
 //Importation des classes nécessaires
 import java.io.*;
+import java.net.URI;
 import java.nio.file.*;
 import java.security.*;
-import java.security.cert.X509Certificate;
-import java.security.cert.CertificateFactory;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.*;
-import java.math.BigInteger;
+import java.security.cert.*;
 import java.security.interfaces.RSAPublicKey;
-import org.bouncycastle.asn1.ASN1Integer;
-import org.bouncycastle.asn1.ASN1Sequence;
-import org.bouncycastle.asn1.ASN1InputStream;
+import java.security.spec.X509EncodedKeySpec;
+import java.math.BigInteger;
+import java.util.*;
+
+import org.bouncycastle.asn1.*;
 import org.bouncycastle.asn1.x9.X9ECParameters;
+import org.bouncycastle.asn1.x509.*;
+import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.crypto.ec.CustomNamedCurves;
 import org.bouncycastle.crypto.params.ECDomainParameters;
 import org.bouncycastle.jce.interfaces.ECPublicKey;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.ECParameterSpec;
 import org.bouncycastle.math.ec.ECPoint;
-
-
-
 
 public class ValidateCert {
 
@@ -508,4 +506,116 @@ public class ValidateCert {
         return false;
     }
 
+    /**
+     * Télécharge la CRL depuis l'URL extraite du certificat
+     * @param cert Certificat dont on veut vérifier la révocation
+     * @return Un objet X509CRL ou null en cas d'échec
+     */
+    public static X509CRL telechargerCRL(X509Certificate cert) {
+        try {
+            String crlUrl = extraireCRLDistributionPoint(cert);
+            if (crlUrl == null) {
+                System.err.println("Aucune URL CRL trouvée pour le certificat : " + cert.getSubjectX500Principal());
+                return null;
+            }
+
+            try (InputStream crlStream = new URI(crlUrl).toURL().openStream()) {
+
+                CertificateFactory cf = CertificateFactory.getInstance("X.509");
+                return (X509CRL) cf.generateCRL(crlStream);
+            }
+        } catch (Exception e) {
+            System.err.println("Erreur lors du téléchargement de la CRL : " + e.getMessage());
+            return null;
+        }
+    }
+
+
+    /**
+     * Extrait l'URL de la CRL depuis le certificat
+     * @param cert Certificat contenant l'extension CRL Distribution Points
+     * @return L'URL de la CRL ou null en cas d'échec
+     */
+    public static String extraireCRLDistributionPoint(X509Certificate cert) {
+        try {
+            byte[] crlBytes = cert.getExtensionValue(Extension.cRLDistributionPoints.getId());
+            if (crlBytes == null) {
+                System.err.println("Aucune extension CRL trouvée");
+                return null;
+            }
+
+            // Décodage ASN.1
+            try (ASN1InputStream asn1InputStream = new ASN1InputStream(new ByteArrayInputStream(crlBytes))) {
+                ASN1OctetString octetString = ASN1OctetString.getInstance(asn1InputStream.readObject());
+                try (ASN1InputStream asn1Stream2 = new ASN1InputStream(new ByteArrayInputStream(octetString.getOctets()))) {
+                    CRLDistPoint crlDistPoint = CRLDistPoint.getInstance(asn1Stream2.readObject());
+
+                    for (DistributionPoint dp : crlDistPoint.getDistributionPoints()) {
+                        DistributionPointName dpn = dp.getDistributionPoint();
+                        if (dpn != null && dpn.getType() == DistributionPointName.FULL_NAME) {
+                            for (GeneralName gn : GeneralNames.getInstance(dpn.getName()).getNames()) {
+                                if (gn.getTagNo() == GeneralName.uniformResourceIdentifier) {
+                                    return gn.getName().toString();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Erreur lors de l'extraction de l'URL de la CRL : " + e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Vérifie si un certificat est révoqué en téléchargeant et en validant sa CRL
+     * @param cert Certificat à vérifier
+     * @param possibleIssuers Liste des certificats émetteurs possibles
+     * @return true si le certificat est révoqué, false sinon
+     */
+    public static boolean verifierRevocationAvecCRL(X509Certificate cert, List<X509Certificate> possibleIssuers) {
+        try {
+            // Vérifier si c'est un Root CA
+            if (cert.getSubjectX500Principal().equals(cert.getIssuerX500Principal())) {
+                System.out.println("Le certificat " + cert.getSubjectX500Principal() + " est un Root CA. Vérification CRL ignorée.");
+                return false;
+            }
+
+            X509CRL crl = telechargerCRL(cert);
+            if (crl == null) {
+                System.err.println("Impossible de récupérer la CRL pour la vérification.");
+                return false;
+            }
+
+            X509Certificate crlIssuerCert = null;
+            for (X509Certificate issuer : possibleIssuers) {
+                if (crl.getIssuerX500Principal().equals(issuer.getSubjectX500Principal())) {
+                    crlIssuerCert = issuer;
+                    break;
+                }
+            }
+
+            if (crlIssuerCert == null) {
+                System.err.println("Aucun certificat trouvé correspondant à l’émetteur de la CRL");
+                return false;
+            }
+
+            // Vérification de la signature de la CRL
+            try {
+                crl.verify(crlIssuerCert.getPublicKey());
+            } catch (Exception e) {
+                System.err.println("Erreur de vérification de la signature de la CRL : " + e.getMessage());
+                return false;
+            }
+
+            // Vérification de la révocation du certificat
+            X509CRLEntry crlEntry = crl.getRevokedCertificate(cert.getSerialNumber());
+            return crlEntry != null;
+
+        } catch (Exception e) {
+            System.err.println("Erreur lors de la vérification de révocation : " + e.getMessage());
+            return false;
+        }
+    }
 }

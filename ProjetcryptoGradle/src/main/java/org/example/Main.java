@@ -3,6 +3,7 @@ package org.example;
 import java.io.File;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class Main {
@@ -72,11 +73,14 @@ public class Main {
                     System.err.println("La chaîne de certificats est invalide.");
                 }
 
-                // Vérification de la signature
+                //Vérification de la signature
                 verifierSignature(certChain);
 
-                // Vérification des propriétés des certificats
+                //Vérification des propriétés des certificats
                 verifierProprietesCertificat(certChain);
+
+                //Vérification de la CRL
+                verifierRevocationCRL(certChain);
 
             } else {
                 //Affichage du bon format de commande à saisir
@@ -93,7 +97,7 @@ public class Main {
      * @param filePath Chemin du fichier du certificat
      * @return Le certificat X509 chargé, ou null en cas d'erreur
      */
-    private static X509Certificate chargerCertificat(String format, String filePath) {
+    static X509Certificate chargerCertificat(String format, String filePath) {
         try {
             File file = new File(filePath);
             if (!file.exists()) {
@@ -217,6 +221,31 @@ public class Main {
             System.out.println("Tous les certificats respectent les Basic Constraints !");
         } else {
             System.err.println("Erreur : Un ou plusieurs certificats ont des Basic Constraints invalides.");
+        }
+    }
+
+    /**
+     * Vérifie la révocation des certificats via CRL
+     * @param certChain Liste des certificats à vérifier
+     */
+    private static void verifierRevocationCRL(List<X509Certificate> certChain) {
+
+        System.out.println("\n=== Vérification de la révocation via CRL ===");
+
+        Collections.reverse(certChain);
+
+        for (int i = certChain.size() - 1; i > 0; i--) {
+            X509Certificate certToCheck = certChain.get(i);
+
+            List<X509Certificate> possibleIssuers = new ArrayList<>(certChain.subList(0, i));
+
+            boolean estRevoque = ValidateCert.verifierRevocationAvecCRL(certToCheck, possibleIssuers);
+
+            if (estRevoque) {
+                System.err.println("Attention : Le certificat " + certToCheck.getSubjectX500Principal() + " a été révoqué !");
+            } else {
+                System.out.println("Le certificat " + certToCheck.getSubjectX500Principal() + " n'est pas révoqué.");
+            }
         }
     }
 
