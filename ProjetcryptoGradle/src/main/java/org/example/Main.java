@@ -3,6 +3,7 @@ package org.example;
 import java.io.File;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class Main {
@@ -72,11 +73,14 @@ public class Main {
                     System.err.println("La chaîne de certificats est invalide.");
                 }
 
-                // Vérification de la signature
+                //Vérification de la signature
                 verifierSignature(certChain);
 
-                // Vérification des propriétés des certificats
+                //Vérification des propriétés des certificats
                 verifierProprietesCertificat(certChain);
+
+                //Vérification de la CRL
+                verifierRevocation(certChain);
 
             } else {
                 //Affichage du bon format de commande à saisir
@@ -93,7 +97,7 @@ public class Main {
      * @param filePath Chemin du fichier du certificat
      * @return Le certificat X509 chargé, ou null en cas d'erreur
      */
-    private static X509Certificate chargerCertificat(String format, String filePath) {
+    static X509Certificate chargerCertificat(String format, String filePath) {
         try {
             File file = new File(filePath);
             if (!file.exists()) {
@@ -219,6 +223,34 @@ public class Main {
             System.err.println("Erreur : Un ou plusieurs certificats ont des Basic Constraints invalides.");
         }
     }
+
+    private static void verifierRevocation(List<X509Certificate> certChain) {
+        System.out.println("\n=== Vérification de la révocation via OCSP et CRL ===");
+
+        Collections.reverse(certChain); // Vérifier du Leaf vers le Root
+
+        for (int i = certChain.size() - 1; i > 0; i--) {
+            X509Certificate certToCheck = certChain.get(i);
+            X509Certificate issuerCert = certChain.get(i - 1);
+
+            // Vérification via OCSP si possible
+            boolean estRevoqueOCSP = ValidateCert.verifierRevocationOCSP(certToCheck, issuerCert);
+            if (estRevoqueOCSP) {
+                System.err.println("Le certificat " + certToCheck.getSubjectX500Principal() + " est révoqué selon OCSP !");
+                return;
+            }
+
+            // Si OCSP n'est pas disponible, bascule sur CRL
+            boolean estRevoqueCRL = ValidateCert.verifierRevocationAvecCRL(certToCheck, List.of(issuerCert));
+            if (estRevoqueCRL) {
+                System.err.println("Le certificat " + certToCheck.getSubjectX500Principal() + " est révoqué selon la CRL !");
+                return;
+            }
+
+            System.out.println("Le certificat " + certToCheck.getSubjectX500Principal() + " n'est pas révoqué.");
+        }
+    }
+
 
     // Méthode pour afficher l'aide sur la ligne de commande
     private static void afficherAide() {
