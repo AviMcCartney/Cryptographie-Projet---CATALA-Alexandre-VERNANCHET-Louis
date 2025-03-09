@@ -59,6 +59,7 @@ public class ValidateCert {
 
     /**
      * Fonction permettant de vérifier la signature d'un certificat en utilisant sa propre clé publique
+     * Cette méthode sert uniquement dans la partie 1 du projet et est remplacé par verifiersignatureRSA/ECDSA
      * @param cert Certificat X509 à vérifier
      * @see java.security.cert.X509Certificate
      * {@link X509Certificate#verify(PublicKey) Fonctionne sur les certificats auto-signés car ils sont signés avec leur propre clé privée et peuvent être validés avec leur clé
@@ -78,8 +79,7 @@ public class ValidateCert {
 
 
     public static boolean verifierKeyUsage(List<X509Certificate> certChain) {
-        if (certChain == null || certChain.isEmpty()) {
-            System.err.println("Liste de certificats vide ou nulle.");
+        if (IsChainNull(certChain)) {
             return false;
         }
 
@@ -135,6 +135,8 @@ public class ValidateCert {
 
     /**
      * Fonction qui vérifie l'algorithme de signature ainsi que la validité de la signature
+     * Cette fonction était utile pour répondre à la question 6 de la première partie.
+     * Maintenant, il est plus intéressant d'utiliser verifiersignatureRSA/ECDSA
      * @param cert Le certificat à analyser
      * {@link X509Certificate#getSigAlgName() récupération de l'algorithme de signature utilisé}
      * {@link X509Certificate#getSignature() récupération de la signature}
@@ -172,8 +174,7 @@ public class ValidateCert {
     }
 
     public static boolean verifierChaineCertificats(List<X509Certificate> chain) {
-        if (chain == null || chain.isEmpty()) {
-            System.err.println("Erreur : La chaîne de certificats est vide ou nulle.");
+        if (IsChainNull(chain)) {
             return false;
         }
 
@@ -218,8 +219,7 @@ public class ValidateCert {
 
     public static boolean verifierSignatureRSA_BigInteger(List<X509Certificate> certChain) {
         try {
-            if (certChain == null || certChain.isEmpty()) {
-                System.err.println("Erreur : Liste de certificats vide ou nulle.");
+            if (IsChainNull(certChain)) {
                 return false;
             }
 
@@ -299,8 +299,7 @@ public class ValidateCert {
         try {
             Security.addProvider(new BouncyCastleProvider());
 
-            if (certChain == null || certChain.isEmpty()) {
-                System.err.println("Erreur : Liste de certificats vide ou nulle.");
+            if (IsChainNull(certChain)) {
                 return false;
             }
 
@@ -408,8 +407,8 @@ public class ValidateCert {
     }
 
     public static boolean verifierBasicConstraints(List<X509Certificate> certChain) {
-        if (certChain == null || certChain.isEmpty()) {
-            System.err.println("Erreur : Liste de certificats vide ou nulle.");
+
+        if (IsChainNull(certChain)) {
             return false;
         }
 
@@ -452,4 +451,13 @@ public class ValidateCert {
         }
         return true;
     }
+
+    public static boolean IsChainNull (List<X509Certificate> chain){
+        if (chain == null || chain.isEmpty()) {
+            System.err.println("Erreur : Liste de certificats vide ou nulle.");
+            return true;
+        }
+        return false;
+    }
+
 }
