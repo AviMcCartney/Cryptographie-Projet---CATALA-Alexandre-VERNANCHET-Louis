@@ -1,115 +1,171 @@
 # Cryptographie-Projet---CATALA-Alexandre-VERNANCHET-Louis
 Projet cryptographie ISEN4 cybersécurité
 
-Ce projet Java a pour objectif de **valider des certificats X.509** et leurs chaînes en vérifiant plusieurs aspects essentiels :  
-- La **signature** (RSA ou ECDSA) du certificat.  
-- Les **Key Usage** et les **Basic Constraints** pour déterminer si un certificat peut signer d'autres certificats.  
-- Le **statut de révocation** via CRL et OCSP, avec mise en cache pour optimiser les performances.  
-- La vérification de la signature RSA en utilisant des calculs sur grands nombres via `java.math.BigInteger`.
+Ce projet a pour but de valider des certificats X.509 en Java, en s’appuyant sur diverses étapes de vérification (analyse des propriétés du certificat, vérification de la signature, contrôle de révocation via OCSP ou CRL, etc.). Il fournit également des fonctionnalités d’affichage des informations sur le ou les certificats manipulés, ainsi qu’un système de cache pour optimiser la récupération des listes de révocation (CRL).
+
+## Table des Matières
+1. [Contexte](#contexte)
+2. [Fonctionnalités Principales](#fonctionnalités-principales)
+3. [Arborescence du Projet](#arborescence-du-projet)
+4. [Description des Classes](#description-des-classes)
+5. [Compilation et Exécution](#compilation-et-exécution)
+6. [Utilisation](#utilisation)
+7. [Exemples d’Exécution](#exemples-dexécution)
 
 ---
 
-## Table des matières
-- [Fonctionnalités](#fonctionnalités)
-- [Architecture du projet](#architecture-du-projet)
-- [Prérequis](#prérequis)
-- [Compilation et Exécution](#compilation-et-exécution)
-- [Utilisation](#utilisation)
+## Contexte
+
+Ce projet fait partie d’un **projet de cryptographie** visant à manipuler et valider des certificats X.509 en Java. L’application prend en charge la vérification de certificats uniques (leaf) ou de chaînes de certificats, ainsi que la vérification de la révocation via **OCSP** et **CRL**. Elle utilise la bibliothèque [BouncyCastle](https://www.bouncycastle.org/) pour certaines opérations cryptographiques (ECDSA, parsing ASN.1, etc.).
 
 ---
 
-## Fonctionnalités
+## Fonctionnalités Principales
 
-- **Validation de certificats individuels :**  
-  Charge un certificat en format DER ou PEM, affiche ses informations (sujet, émetteur, validité, numéro de série) et vérifie sa signature, sa validité temporelle, ainsi que ses extensions Key Usage et Basic Constraints.
-
-- **Validation d'une chaîne de certificats :**  
-  Vérifie récursivement la chaîne en s'assurant que chaque certificat est correctement signé par son émetteur, en remontant jusqu'au certificat racine auto-signé.
-
-- **Vérification RSA avec `BigInteger` :**  
-  Implémente manuellement la vérification de signature RSA en utilisant des opérations sur grands nombres pour démontrer le processus de déchiffrement et de comparaison du hash.
-
-- **Vérification du statut de révocation via CRL et OCSP :**  
-  Télécharge et analyse les CRL et/ou interroge un serveur OCSP pour déterminer si un certificat a été révoqué.  
-  Un système de cache (en mémoire et/ou sur disque) a été mis en place pour éviter des téléchargements répétés des mêmes CRL.
+- **Validation de certificat unique** : vérifie si un certificat est valide (dates de validité, signature, extensions).
+- **Validation de chaîne de certificats** : s’assure de la bonne signature de chaque certificat par son émetteur, depuis le leaf jusqu’à la racine.
+- **Vérification de la révocation** :
+  - **OCSP** : construction et envoi de requêtes OCSP vers un serveur, si l’URL OCSP est disponible dans le certificat.
+  - **CRL** : téléchargement et mise en cache de la CRL, vérification que le certificat n’y figure pas comme révoqué.
+- **Informations détaillées** : affichage des informations sur chaque certificat (sujet, émetteur, date de validité, numéro de série, etc.).
+- **Gestion de l’affichage** : messages d’erreur, détails sur la progression des vérifications, etc.
 
 ---
 
-## Architecture du projet
+## Arborescence du Projet
 
-Le projet est structuré en deux classes principales :
+Voici une vue d’ensemble (fichiers principaux et packages) :
 
-- **`Main.java`**  
-  Point d'entrée du projet. Cette classe gère l'interface en ligne de commande, le chargement des certificats (individuels ou en chaîne) et l'appel des différentes méthodes de vérification.
-
-- **`ValidateCert.java`**  
-  Contient l'ensemble des méthodes permettant de réaliser la validation :
-  - Chargement des certificats (DER/PEM)
-  - Vérification de la signature et des algorithmes de signature
-  - Vérification des Key Usage et Basic Constraints
-  - Validation de la chaîne de certificats (approche récursive)
-  - Vérification du statut de révocation via CRL et OCSP
-  - Vérification RSA manuelle avec `BigInteger`
-
+```
+org/
+└── example/
+    ├── Main.java                         (Point d’entrée du programme)                 citeturn0file0
+    └── Certificats/
+        ├── Affichage/
+        │   └── ManageAffichage.java      (Méthodes d'affichage et aide CLI)            citeturn0file1
+        ├── Utiles/
+        │   ├── utilitaire.java           (Fonctions utilitaires diverses)              citeturn0file2
+        │   ├── OCSPManager.java          (Gère la logique de requête OCSP)             citeturn0file3
+        │   └── CRLManager.java           (Gère la logique de téléchargement CRL)       citeturn0file4
+        └── Validation/
+            ├── ValidationCertificat.java (Processus de validation : signature, CRL...) citeturn0file5
+            ├── VerifierExtension.java    (Vérif. KeyUsage, dates, BasicConstraints)    citeturn0file6
+            └── VerifierSignature.java    (Vérif. signature RSA & ECDSA)                citeturn0file7
+```
 ---
 
-## Prérequis
+## Description des Classes
 
-- **Java JDK 8 ou supérieur** (recommandé JDK 23 pour les dernières fonctionnalités).  
-- **Bibliothèques tierces** :  
-  - Bouncy Castle (pour la gestion des extensions ASN.1, OCSP et CRL)  
-  - (Optionnel) Toute autre bibliothèque de cryptographie ou utilitaire selon vos besoins.
+### Main.java
+Point d’entrée du programme. Il parse les arguments de la ligne de commande, détermine s’il faut valider un certificat unique ou une chaîne de certificats, puis s’appuie sur les fonctions de chargement et de validation.  
+citeturn0file0
+
+### ManageAffichage.java
+- Gère l’affichage des informations sur les certificats (sujet, émetteur, validité, etc.).
+- Fournit une fonction d’aide pour l’utilisation en ligne de commande.
+- Vérifie de manière basique la validité de la date du certificat.  
+citeturn0file1
+
+### utilitaire.java
+- Contient quelques utilitaires génériques, par exemple pour vérifier si une chaîne de certificats est vide ou nulle.  
+citeturn0file2
+
+### OCSPManager.java
+- Extrait l’URL OCSP depuis l’extension “Authority Information Access” d’un certificat.
+- Construit et envoie la requête OCSP (POST) vers le serveur OCSP.
+- Analyse la réponse pour déterminer si le certificat est révoqué.  
+citeturn0file3
+
+### CRLManager.java
+- Extrait l’URL CRL depuis l’extension “CRL Distribution Points” d’un certificat.
+- Télécharge et met en cache la CRL (fichier .crl), afin d’éviter des téléchargements successifs inutiles.
+- Vérifie, via la CRL, si un certificat est listé comme révoqué.  
+citeturn0file4
+
+### ValidationCertificat.java
+- Orchestre la validation globale :
+  - Vérification des propriétés du certificat (KeyUsage, BasicConstraints).
+  - Vérification de la révocation (OCSP, si disponible, sinon CRL).
+- Fournit aussi une méthode `verifierSignature()` pour déléguer aux méthodes RSA ou ECDSA.  
+citeturn0file5
+
+### VerifierExtension.java
+- Vérifie les **extensions** X.509 essentielles : KeyUsage, BasicConstraints, dates de validité.  
+citeturn0file6
+
+### VerifierSignature.java
+- Vérifie la signature RSA “manuellement” (calcul de la signature avec l’exposant public, comparaison du hash).
+- Vérifie la signature ECDSA (extraction de r et s, usage de BouncyCastle pour la courbe, etc.).
+- Permet aussi de vérifier qu’un certificat racine est bien auto-signé.  
+citeturn0file7
 
 ---
 
 ## Compilation et Exécution
 
-### Compilation
-Pour compiler le projet, vous pouvez utiliser la commande suivante dans le répertoire du projet :
+Le projet est codé en Java et utilise la bibliothèque **BouncyCastle**. Vous aurez donc besoin :
+
+- **Java 8** (ou plus récent).
+- Le JAR de BouncyCastle (ex. `bcprov-jdk15on-*.jar`) dans le classpath.
+
+### Exemple de compilation (ligne de commande) :
 
 ```bash
-javac -d out -sourcepath src src/Main.java src/ValidateCert.java
+# 1) Placer bcprov-jdkXX-XXX.jar dans le dossier lib/ par exemple.
+# 2) Compiler :
+javac -cp .:lib/bcprov-jdk15on-*.jar org/example/**/*.java
 ```
 
-### Exécution
-Pour exécuter le projet, utilisez la commande suivante (en adaptant les chemins d’accès) :
-
-- **Validation d’un certificat unique :**
+### Exemple d’exécution :
 
 ```bash
-java -cp out Main validate-cert -format PEM "chemin/vers/le/certificat.pem"
+java -cp .:lib/bcprov-jdk15on-*.jar org.example.Main validate-cert -format PEM moncert.pem
 ```
 
-- **Validation d’une chaîne de certificats :**
-
-```bash
-java -cp out Main validate-cert-chain -format PEM "chemin/vers/RootCert.pem" "chemin/vers/IntermediateCert.pem" "chemin/vers/LeafCert.pem"
-```
+> Adaptez bien sûr les chemins selon votre configuration.
 
 ---
 
 ## Utilisation
 
-Le projet offre deux modes de validation :
+Deux commandes principales sont gérées :
 
-1. **validate-cert**  
-   Permet de vérifier un seul certificat, considéré comme un Root CA s’il est auto-signé.  
-   Exemple :
-
-   ```bash
-   java -cp out Main validate-cert -format PEM "C:\chemin\vers\certificat.pem"
+1. **Validation d’un certificat unique**  
    ```
-
-2. **validate-cert-chain**  
-   Permet de vérifier une chaîne complète de certificats en respectant l'ordre suivant :  
-   **Root CA → Intermediate CA → Leaf Cert**  
-   La fonction récursive vérifie que chaque certificat est signé par son émetteur et que les extensions Key Usage et Basic Constraints sont conformes à leur rôle.
-   Exemple :
-
-   ```bash
-   java -cp out Main validate-cert-chain -format PEM "C:\chemin\vers\RootCert.pem" "C:\chemin\vers\IntermediateCert.pem" "C:\chemin\vers\LeafCert.pem"
+   validate-cert -format DER|PEM <fichier_certificat>
    ```
+   - Vérifie la validité (dates, signature), l’affiche dans la console, puis effectue d’éventuelles vérifications (extensions, etc.).
+
+2. **Validation d’une chaîne de certificats**  
+   ```
+   validate-cert-chain -format DER|PEM <certificatRoot> <certificat2> ... <certificatN>
+   ```
+   - Charge et valide la chaîne de certificats, depuis le **leaf** (dernier argument) jusqu’à la **racine** (premier argument).
+   - Affiche les informations sur chaque certificat et effectue des contrôles (signature, extensions, révocation, etc.).
+
+Pour plus de détails, lancez le programme sans arguments ou de manière incorrecte pour voir l’aide.  
+citeturn0file1
 
 ---
 
+## Exemples d’Exécution
 
+1. **Validation d’un certificat unique en PEM**  
+   ```bash
+   java -cp .:lib/bcprov-jdk15on-*.jar org.example.Main validate-cert -format PEM moncert.pem
+   ```
+   Résultat attendu :  
+   - Affichage des informations basiques du certificat (subject, issuer, dates).
+   - Vérification de la validité des dates et de la signature.
+   - Vérification des extensions (KeyUsage, BasicConstraints s’il y a lieu).
+
+2. **Validation d’une chaîne en DER**  
+   ```bash
+   java -cp .:lib/bcprov-jdk15on-*.jar org.example.Main validate-cert-chain -format DER rootCert.der intermCert.der leafCert.der
+   ```
+   Résultat attendu :  
+   - Vérification de chaque certificat dans la console (subject, issuer…).
+   - Vérification de la signature de chaque certificat par son émetteur.
+   - Vérification de la révocation via OCSP (si l’URL est disponible), sinon via CRL.
+
+---
