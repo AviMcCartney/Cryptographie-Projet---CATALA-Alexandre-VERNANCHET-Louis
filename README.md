@@ -39,18 +39,18 @@ Voici une vue d’ensemble (fichiers principaux et packages) :
 ```
 org/
 └── example/
-    ├── Main.java                         (Point d’entrée du programme)                 citeturn0file0
+    ├── Main.java                         (Point d’entrée du programme)                 
     └── Certificats/
         ├── Affichage/
-        │   └── ManageAffichage.java      (Méthodes d'affichage et aide CLI)            citeturn0file1
+        │   └── ManageAffichage.java      (Méthodes d'affichage et aide CLI)            
         ├── Utiles/
-        │   ├── utilitaire.java           (Fonctions utilitaires diverses)              citeturn0file2
-        │   ├── OCSPManager.java          (Gère la logique de requête OCSP)             citeturn0file3
-        │   └── CRLManager.java           (Gère la logique de téléchargement CRL)       citeturn0file4
+        │   ├── utilitaire.java           (Fonctions utilitaires diverses)             
+        │   ├── OCSPManager.java          (Gère la logique de requête OCSP)             
+        │   └── CRLManager.java           (Gère la logique de téléchargement CRL)       
         └── Validation/
-            ├── ValidationCertificat.java (Processus de validation : signature, CRL...) citeturn0file5
-            ├── VerifierExtension.java    (Vérif. KeyUsage, dates, BasicConstraints)    citeturn0file6
-            └── VerifierSignature.java    (Vérif. signature RSA & ECDSA)                citeturn0file7
+            ├── ValidationCertificat.java (Processus de validation : signature, CRL...) 
+            ├── VerifierExtension.java    (Vérif. KeyUsage, dates, BasicConstraints)    
+            └── VerifierSignature.java    (Vérif. signature RSA & ECDSA)               
 ```
 ---
 
