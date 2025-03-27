@@ -58,46 +58,39 @@ org/
 
 ### Main.java
 Point d’entrée du programme. Il parse les arguments de la ligne de commande, détermine s’il faut valider un certificat unique ou une chaîne de certificats, puis s’appuie sur les fonctions de chargement et de validation.  
-citeturn0file0
+
 
 ### ManageAffichage.java
 - Gère l’affichage des informations sur les certificats (sujet, émetteur, validité, etc.).
 - Fournit une fonction d’aide pour l’utilisation en ligne de commande.
 - Vérifie de manière basique la validité de la date du certificat.  
-citeturn0file1
 
 ### utilitaire.java
 - Contient quelques utilitaires génériques, par exemple pour vérifier si une chaîne de certificats est vide ou nulle.  
-citeturn0file2
 
 ### OCSPManager.java
 - Extrait l’URL OCSP depuis l’extension “Authority Information Access” d’un certificat.
 - Construit et envoie la requête OCSP (POST) vers le serveur OCSP.
 - Analyse la réponse pour déterminer si le certificat est révoqué.  
-citeturn0file3
 
 ### CRLManager.java
 - Extrait l’URL CRL depuis l’extension “CRL Distribution Points” d’un certificat.
 - Télécharge et met en cache la CRL (fichier .crl), afin d’éviter des téléchargements successifs inutiles.
 - Vérifie, via la CRL, si un certificat est listé comme révoqué.  
-citeturn0file4
 
 ### ValidationCertificat.java
 - Orchestre la validation globale :
   - Vérification des propriétés du certificat (KeyUsage, BasicConstraints).
   - Vérification de la révocation (OCSP, si disponible, sinon CRL).
 - Fournit aussi une méthode `verifierSignature()` pour déléguer aux méthodes RSA ou ECDSA.  
-citeturn0file5
 
 ### VerifierExtension.java
 - Vérifie les **extensions** X.509 essentielles : KeyUsage, BasicConstraints, dates de validité.  
-citeturn0file6
 
 ### VerifierSignature.java
 - Vérifie la signature RSA “manuellement” (calcul de la signature avec l’exposant public, comparaison du hash).
 - Vérifie la signature ECDSA (extraction de r et s, usage de BouncyCastle pour la courbe, etc.).
 - Permet aussi de vérifier qu’un certificat racine est bien auto-signé.  
-citeturn0file7
 
 ---
 
