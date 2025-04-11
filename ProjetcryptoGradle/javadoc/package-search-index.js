@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"org.example"},{"l":"org.example.Certificats.Affichage"},{"l":"org.example.Certificats.Chargement"},{"l":"org.example.Certificats.Utiles"},{"l":"org.example.Certificats.Validation"}];updateSearchResults();
